@@ -33,7 +33,7 @@ async def _run(peers, n, t, my_id, batch_size):
             if my_id != dealer_id:
                 hbavss_task = asyncio.create_task(hbavss.avss(
                     0, dealer_id=dealer_id, values=values, client_mode=True))
-                await hbavss.share_future
+                await hbavss.shares_future
                 end_time = time.time()
                 logger.info(f"Recipient time: {(end_time - begin_time)}")
                 hbavss_task.cancel()

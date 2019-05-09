@@ -40,6 +40,8 @@ class NodeCommunicator(object):
                 self._sender_queues[i] = asyncio.Queue()
 
     def send(self, node_id, msg):
+        message = str(msg[1])
+        print(str(node_id) + ", " + str(len(message)) + " chars, " + message[:100])
         msg = (self.my_id, msg) if node_id == self.my_id else msg
         self._sender_queues[node_id].put_nowait(msg)
 
@@ -51,8 +53,7 @@ class NodeCommunicator(object):
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        print(self.bytes_sent)
-        self.benchmark_logger.info("Total bytes sent out: %d", self.bytes_sent)
+        print("Total bytes sent out: %d", self.bytes_sent)
         # Add None to the sender queues and drain out all the messages.
         for i in range(len(self._sender_queues)):
             if i != self.my_id:
