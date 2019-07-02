@@ -7,8 +7,8 @@ from honeybadgermpc.poly_commit_const import PolyCommitConst
 from honeybadgermpc.poly_commit_lin import PolyCommitLin
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 from honeybadgermpc.protocols.reliablebroadcast import reliablebroadcast
-from honeybadgermpc.protocols.avid import AVID, subscribe_recv
-from honeybadgermpc.utils import wrap_send
+from honeybadgermpc.protocols.avid import AVID
+from honeybadgermpc.utils import wrap_send, subscribe_recv
 import time
 
 
