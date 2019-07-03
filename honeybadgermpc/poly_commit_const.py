@@ -46,13 +46,19 @@ class PolyCommitConst:
     # Take advantage of this to save pairings
     def verify_eval(self, c, i, phi_at_i, phi_hat_at_i, witness):
         lhs = c.pair_with(self.ghats[0])
-        rhs = witness.pair_with(self.ghats[1] / (self.ghats[0] ** i)) \
-            * self.gg**phi_at_i * self.gh**phi_hat_at_i
+        rhs = (
+            witness.pair_with(self.ghats[1] / (self.ghats[0] ** i))
+            * self.gg ** phi_at_i
+            * self.gh ** phi_hat_at_i
+        )
         return lhs == rhs
 
     def batch_verify_eval(self, commits, i, shares, auxes, witnesses):
-        assert len(commits) == len(shares) and len(commits) == len(witnesses) \
+        assert (
+            len(commits) == len(shares)
+            and len(commits) == len(witnesses)
             and len(commits) == len(auxes)
+        )
         commitprod = G1.one()
         witnessprod = G1.one()
         sharesum = ZR(0)
@@ -63,8 +69,11 @@ class PolyCommitConst:
             sharesum += shares[j]
             auxsum += auxes[j]
         lhs = pair(commitprod, self.ghats[0])
-        rhs = pair(witnessprod, self.ghats[1] * self.ghats[0]**(-i)) \
-            * (self.gg ** sharesum) * (self.gh ** auxsum)
+        rhs = (
+            pair(witnessprod, self.ghats[1] * self.ghats[0] ** (-i))
+            * (self.gg ** sharesum)
+            * (self.gh ** auxsum)
+        )
         return lhs == rhs
 
     def preprocess_verifier(self, level=4):
@@ -94,11 +103,11 @@ def gen_pc_const_crs(t, alpha=None, g=None, h=None, ghat=None):
     if ghat is None:
         ghat = G2.rand([0, 0, 0, 1])
     (gs, ghats, hs) = ([], [], [])
-    for i in range(t+1):
-        gs.append(g**(alpha**i))
+    for i in range(t + 1):
+        gs.append(g ** (alpha ** i))
     for i in range(2):
-        ghats.append(ghat**(alpha**i))
-    for i in range(t+1):
-        hs.append(h**(alpha**i))
+        ghats.append(ghat ** (alpha ** i))
+    for i in range(t + 1):
+        hs.append(h ** (alpha ** i))
     crs = [gs, ghats, hs]
     return crs
