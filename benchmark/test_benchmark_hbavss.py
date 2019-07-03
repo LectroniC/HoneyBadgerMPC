@@ -12,7 +12,7 @@ import asyncio
 
 def get_avss_params(n, t):
     g, h = G1.rand(), G1.rand()
-    public_keys, private_keys = [None]*n, [None]*n
+    public_keys, private_keys = [None] * n, [None] * n
     for i in range(n):
         private_keys[i] = ZR.random()
         public_keys[i] = pow(g, private_keys[i])
@@ -26,7 +26,7 @@ def get_avss_params(n, t):
 def test_benchmark_hbavss_lite_dealer(test_router, benchmark, t, k):
     loop = asyncio.get_event_loop()
     field = ZR
-    n = 3*t
+    n = 3 * t
     g, h, pks, sks = get_avss_params(n, t)
     crs = [g, h]
     pc = PolyCommitLin(crs, field=field)
@@ -45,9 +45,9 @@ def test_benchmark_hbavss_lite_dealer(test_router, benchmark, t, k):
                            (1, 100), (3, 100), (5, 100), (16, 100), (33, 100)])
 def test_benchmark_hbavss_dealer(test_router, benchmark, t, k):
     loop = asyncio.get_event_loop()
-    n = 3*t + 1
+    n = 3 * t + 1
     field = GF(Subgroup.BLS12_381)
-    g, h, pks, sks = get_avss_params(n+1, t)
+    g, h, pks, sks = get_avss_params(n + 1, t)
     crs = gen_pc_const_crs(t, g=g, h=h)
     pc = PolyCommitConst(crs, field=field)
     pc.preprocess_prover(8)
@@ -68,7 +68,7 @@ def test_benchmark_hbavss_lite(test_router, benchmark, t, k):
     loop = asyncio.get_event_loop()
     # field = GF(Subgroup.BLS12_381)
     field = ZR
-    n = 3*t + 1
+    n = 3 * t + 1
     g, h, pks, sks = get_avss_params(n, t)
     crs = [g, h]
     pc = PolyCommitLin(crs, field=field)
@@ -87,7 +87,7 @@ def test_benchmark_hbavss_lite(test_router, benchmark, t, k):
                            (1, 100), (3, 100), (5, 100), (16, 100), (33, 100)])
 def test_benchmark_hbavss(test_router, benchmark, t, k):
     loop = asyncio.get_event_loop()
-    n = 3*t + 1
+    n = 3 * t + 1
     field = GF(Subgroup.BLS12_381)
     g, h, pks, sks = get_avss_params(n, t)
     crs = gen_pc_const_crs(t, g=g, h=h)
@@ -105,9 +105,9 @@ def test_benchmark_hbavss(test_router, benchmark, t, k):
 async def hbavss_light_batch(test_router, params):
     (t, n, g, h, pks, sks, crs, pc, values, field) = params
     sends, recvs, _ = test_router(n)
-    avss_tasks = [None]*n
-    hbavss_list = [None]*n
-    dealer_id = randint(0, n-1)
+    avss_tasks = [None] * n
+    hbavss_list = [None] * n
+    dealer_id = randint(0, n - 1)
 
     with ExitStack() as stack:
         for i in range(n):
@@ -128,7 +128,7 @@ async def hbavss_light_batch(test_router, params):
 async def hbavss_light_batch_dealer(test_router, params):
 
     (t, n, g, h, pks, sks, crs, pc, values, field) = params
-    sends, recvs, _ = test_router(n+1)
+    sends, recvs, _ = test_router(n + 1)
     dealer_id = n
 
     hbavss = HbAvssLight(pks, None, crs, n, t, dealer_id, sends[dealer_id], recvs[dealer_id], pc=pc, field=field)  # (# noqa: E501)
@@ -140,7 +140,7 @@ async def hbavss_multibatch(test_router, params):
     (t, n, g, h, pks, sks, crs, pc, values, field) = params
     sends, recvs, _ = test_router(n)
     avss_tasks = [None] * n
-    dealer_id = randint(0, n-1)
+    dealer_id = randint(0, n - 1)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -161,7 +161,7 @@ async def hbavss_multibatch(test_router, params):
 
 async def hbavss_multibatch_dealer(test_router, params):
     (t, n, g, h, pks, sks, crs, pc, values, field) = params
-    sends, recvs, _ = test_router(n+1)
+    sends, recvs, _ = test_router(n + 1)
     dealer_id = n
     hbavss = HbAvssBatch(pks, None, crs, n, t, dealer_id, sends[dealer_id], recvs[dealer_id], pc=pc, field=field)  # (# noqa: E501)
     await hbavss.avss(0, values=values, client_mode=True)

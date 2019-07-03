@@ -8,7 +8,7 @@ from pytest import mark
 
 @mark.parametrize("t", [1, 3, 5, 10, 25, 33, 50, 100, 256])
 def test_benchmark_gao_robust_decode(benchmark, t, galois_field):
-    n = 3*t+1
+    n = 3 * t + 1
     galois_field = GF(Subgroup.BLS12_381)
     point = EvalPoint(galois_field, n)
     dec = GaoRobustDecoder(t, point)
@@ -17,7 +17,7 @@ def test_benchmark_gao_robust_decode(benchmark, t, galois_field):
     truepoly = poly.random(degree=t)
     faults = []
     while len(faults) < t:
-        r = randint(0, n-1)
+        r = randint(0, n - 1)
         if r not in faults:
             faults.append(r)
     shares_with_faults = []
@@ -25,7 +25,7 @@ def test_benchmark_gao_robust_decode(benchmark, t, galois_field):
         if i in faults:
             shares_with_faults.append(int(galois_field.random()))
         else:
-            shares_with_faults.append(int(truepoly(i+1)))
+            shares_with_faults.append(int(truepoly(i + 1)))
     benchmark(dec.robust_decode, parties, shares_with_faults)
     # decoded, decoded_faults = dec.robust_decode(parties, shares_with_faults)
     # assert truepoly == poly(decoded)
@@ -34,7 +34,7 @@ def test_benchmark_gao_robust_decode(benchmark, t, galois_field):
 
 @mark.parametrize("t", [1, 3, 5, 10, 25, 33, 50, 100, 256])
 def test_benchmark_gao_robust_decode_fft(benchmark, t, galois_field):
-    n = 3*t+1
+    n = 3 * t + 1
     galois_field = GF(Subgroup.BLS12_381)
     point = EvalPoint(galois_field, n, use_fft=True)
     omega = point.omega.value
@@ -45,7 +45,7 @@ def test_benchmark_gao_robust_decode_fft(benchmark, t, galois_field):
     truepoly = poly.random(degree=t)
     faults = []
     while len(faults) < t:
-        r = randint(0, n-1)
+        r = randint(0, n - 1)
         if r not in faults:
             faults.append(r)
     shares_with_faults = []

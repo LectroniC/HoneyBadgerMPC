@@ -11,7 +11,7 @@ import os
                                 (33, 200), (33, 10000), (50, 200), (50, 10000)])
 def test_benchmark_rbc(test_router, benchmark, t, msglen):
     loop = asyncio.get_event_loop()
-    n = 3*t + 1
+    n = 3 * t + 1
     sends, recvs, _ = test_router(n)
     msg = os.urandom(msglen)
     params = (sends, recvs, t, n, msg)
@@ -28,7 +28,7 @@ def test_benchmark_rbc(test_router, benchmark, t, msglen):
                                 (33, 200), (33, 10000), (50, 200), (50, 10000)])
 def test_benchmark_rbc_dealer(test_router, benchmark, t, msglen):
     loop = asyncio.get_event_loop()
-    n = 3*t + 1
+    n = 3 * t + 1
     sends, recvs, _ = test_router(n)
     msg = os.urandom(msglen)
     params = (sends, recvs, t, n, msg)
@@ -42,8 +42,8 @@ def test_benchmark_rbc_dealer(test_router, benchmark, t, msglen):
 async def rbc(params):
 
     (sends, recvs, t, n, msg) = params
-    rbc_tasks = [None]*n
-    dealer_id = randint(0, n-1)
+    rbc_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
     tag = f"RBC"
 
     for i in range(n):
