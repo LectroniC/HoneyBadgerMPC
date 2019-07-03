@@ -61,16 +61,16 @@ async def test_hbavss_light(test_router):
 @mark.asyncio
 async def test_hbavss_light_gf(test_router):
     t = 2
-    n = 3*t + 1
+    n = 3 * t + 1
 
     g, h, pks, sks = get_avss_params(n, t)
     sends, recvs, _ = test_router(n)
     crs = [g, h]
     field = GF(Subgroup.BLS12_381)
     value = field.random()
-    avss_tasks = [None]*n
-    hbavss_list = [None]*n
-    dealer_id = randint(0, n-1)
+    avss_tasks = [None] * n
+    hbavss_list = [None] * n
+    dealer_id = randint(0, n - 1)
 
     with ExitStack() as stack:
         for i in range(n):
@@ -91,7 +91,7 @@ async def test_hbavss_light_gf(test_router):
     shares = []
     for item in outputs:
         shares.append(item[2])
-    assert polynomials_over(field).interpolate_at(zip(range(1, n+1), shares)) == value
+    assert polynomials_over(field).interpolate_at(zip(range(1, n + 1), shares)) == value
 
 
 @mark.asyncio
@@ -843,7 +843,7 @@ async def test_hbavss_batch_batch(test_router):
 @mark.asyncio
 async def test_hbavss_batch_batch_gf(test_router):
     t = 2
-    n = 3*t + 1
+    n = 3 * t + 1
 
     g, h, pks, sks = get_avss_params(n, t)
     sends, recvs, _ = test_router(n)
@@ -851,7 +851,7 @@ async def test_hbavss_batch_batch_gf(test_router):
     field = GF(Subgroup.BLS12_381)
     values = [field.random() for _ in range(50)]
     avss_tasks = [None] * n
-    dealer_id = randint(0, n-1)
+    dealer_id = randint(0, n - 1)
 
     shares = [None] * n
     with ExitStack() as stack:
@@ -876,6 +876,6 @@ async def test_hbavss_batch_batch_gf(test_router):
     recovered_values = []
     for item in fliped_shares:
         recovered_values.append(polynomials_over(
-            field).interpolate_at(zip(range(1, n+1), item)))
+            field).interpolate_at(zip(range(1, n + 1), item)))
 
     assert recovered_values == values

@@ -550,9 +550,9 @@ class ZR:
         elif type(val) is int:
             uint = val % (bls12_381_r)
             u1 = uint % 2**64
-            u2 = (uint//(2**64)) % 2**64
-            u3 = (uint//(2**128)) % 2**64
-            u4 = (uint//(2**192))
+            u2 = (uint // (2**64)) % 2**64
+            u3 = (uint // (2**128)) % 2**64
+            u4 = (uint // (2**192))
             self.val = PyFr(u1, u2, u3, u4)
         elif type(val) is str:
             if val[0:2] == "0x":
@@ -561,9 +561,9 @@ class ZR:
                 intval = int(val)
             uint = intval % (bls12_381_r)
             u1 = uint % 2**64
-            u2 = (uint//(2**64)) % 2**64
-            u3 = (uint//(2**128)) % 2**64
-            u4 = (uint//(2**192))
+            u2 = (uint // (2**64)) % 2**64
+            u3 = (uint // (2**128)) % 2**64
+            u4 = (uint // (2**192))
             self.val = PyFr(u1, u2, u3, u4)
         elif type(val) is PyFr:
             self.val = val

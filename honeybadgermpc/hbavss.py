@@ -657,7 +657,7 @@ class HbAvssBatch():
 
 def get_avss_params(n, t):
     g, h = G1.rand(), G1.rand()
-    public_keys, private_keys = [None]*n, [None]*n
+    public_keys, private_keys = [None] * n, [None] * n
     for i in range(n):
         private_keys[i] = ZR.random(0)
         public_keys[i] = pow(g, private_keys[i])
