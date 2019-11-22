@@ -27,7 +27,7 @@ def test_pc_log_batch(t):
     witnesses = pc.batch_create_witness(phi, r)
     assert pc.verify_eval(c, 4, phi(4), witnesses[3])
 
-@mark.parametrize("t", [3])
+@mark.parametrize("t", [3, 6, 10])
 def test_double_batch_pc_log_batch(t):
     pc = PolyCommitLog()
     phi1 = polynomials_over(ZR).random(t)

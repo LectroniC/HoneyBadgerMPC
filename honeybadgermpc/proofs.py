@@ -434,8 +434,9 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
             for j in range(len(P_vec)):
                 P_vec[j] *= g_vec[-1] ** (na) * u ** (na * b_vecs[j][-1])
                 if (j+1) % (len(b_vecs)/len(a_vecs)) == 0:
-                    i += 1
-                    na = -1 * a_vecs[i][-1]
+                    if i + 1 < len(a_vecs):
+                        i += 1
+                        na = -1 * a_vecs[i][-1]
                 proofsteps[j].append(na)
         n_p = n // 2
         cl_vec = [ZR(0) for _ in range(len(b_vecs))]
@@ -458,7 +459,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
             L_vec[j] = Las[k] * (u ** cl_vec[j])
             R_vec[j] = Ras[k] * (u ** cr_vec[j])
             if (j + 1) % (len(b_vecs) / len(a_vecs)) == 0:
-                i += 1
+                k += 1
 
         # Fiat Shamir
         # Make a merkle tree over everything that varies between verifiers
