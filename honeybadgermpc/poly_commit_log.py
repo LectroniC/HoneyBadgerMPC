@@ -4,6 +4,7 @@ from honeybadgermpc.proofs import (
     verify_inner_product_one_known,
     prove_batch_inner_product_one_known,
     verify_batch_inner_product_one_known,
+    prove_double_batch_inner_product_one_known,
     MerkleTree,
 )
 import pickle
@@ -97,6 +98,61 @@ class PolyCommitLog:
             witnesses[j] += [S, T_vec[j], D, mu, t_hats[j], iproofs[j]]
         return witnesses
 
+    # Create witnesses for points 1 to n. n defaults to 3*degree+1 if unset.
+    # The numbers of coefficients of the many phis are assumed to be the same.
+    def double_batch_create_witness(self, phis, r, n=None):
+        t = len(phis[0].coeffs) - 1
+        if n is None:
+            # There are len(phis) * (3*degree+1) vectors in total.
+            n = (3 * t + 1) * len(phis)
+        if len(self.y_vecs) < n:
+            i = len(self.y_vecs)
+            while i < n:
+                self.y_vecs.append([ZR(i % (3 * t + 1) + 1) ** j for j in range(t + 1)])
+                i += 1
+        # length t
+        s_vec = [ZR.random() for _ in range(t + 1)]
+        sy_prods = [ZR(0) for _ in range(n)]
+        S = G1.one()
+        T_vec = [None] * n
+        witnesses = [[] for _ in range(n)]
+        for i in range(t + 1):
+            S *= self.gs[i] ** s_vec[i]
+        # g^(<s,y_i>)
+        for j in range(n):
+            for i in range(t + 1):
+                sy_prods[j] += s_vec[i] * self.y_vecs[j][i]
+            T_vec[j] = self.gs[0] ** sy_prods[j]
+        rho = ZR.random()
+        S *= self.h ** rho
+        # Fiat Shamir
+        tree = MerkleTree()
+        for j in range(n):
+            tree.append(pickle.dumps(T_vec[j]))
+        roothash = tree.get_root_hash()
+        for j in range(n):
+            branch = tree.get_branch(j)
+            witnesses[j].append(roothash)
+            witnesses[j].append(branch)
+        challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
+        d_vecs = []
+        for i in range(len(phis)):
+            d_vecs.append([phis[i].coeffs[j] + s_vec[j] * challenge for j in range(t + 1)])
+        Ds = [G1.one() for _ in range(len(phis))]
+        for i in range(len(phis)):
+            for j in range(t + 1):
+                Ds[i] *= self.gs[j] ** d_vecs[i][j]
+        mu = r + rho * challenge
+        comms, t_hats, iproofs = prove_double_batch_inner_product_one_known(
+            d_vecs, self.y_vecs, crs=[self.gs, self.u]
+        )
+        for j in range(len(witnesses)):
+            k = 0
+            witnesses[j] += [S, T_vec[j], Ds[k], mu, t_hats[j], iproofs[j]]
+            if (j+1)%len(phis)==0:
+                k += 1
+        return witnesses
+
     def verify_eval(self, c, i, phi_at_i, witness):
         t = witness[-1][0] - 1
         y_vec = [ZR(i) ** j for j in range(t + 1)]
@@ -122,5 +178,6 @@ class PolyCommitLog:
 
     def preprocess_prover(self, level=10):
         self.u.preprocess(level)
+        # 0 to length-1
         for i in range(len(self.gs) - 1):
             self.y_vecs.append([ZR(i + 1) ** j for j in range(len(self.gs))])
