@@ -68,6 +68,9 @@ class MerkleTree:
             tindex >>= 1
         if tmp == root_hash:
             return True
+        print(tmp == root_hash)
+        print(tmp)
+        print(root_hash)
         return False
 
 
@@ -451,8 +454,8 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
                 Las[j] *= g_vec[n_p:][i] ** a_vecs[j][:n_p][i]
                 Ras[j] *= g_vec[:n_p][i] ** a_vecs[j][n_p:][i]
 
+        k = 0
         for j in range(len(b_vecs)):
-            k = 0
             for i in range(n_p):
                 cl_vec[j] += a_vecs[k][:n_p][i] * b_vecs[j][n_p:][i]
                 cr_vec[j] += a_vecs[k][n_p:][i] * b_vecs[j][:n_p][i]
@@ -523,13 +526,13 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
 
     iprods = [ZR(0) for _ in range(len(b_vecs))]
     P_vec = [None] * len(b_vecs)
+    k = 0
     for j in range(len(b_vecs)):
-        k = 0
         for i in range(n):
             iprods[j] += a_vecs[k][i] * b_vecs[j][i]
+        P_vec[j] = comms[k] * u ** iprods[j]
         if (j+1) % (len(b_vecs)/len(a_vecs)) == 0:
             k += 1
-        P_vec[j] = comms[k] * u ** iprods[j]
     transcript = pickle.dumps(u)
     proofs = recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript)
     for j in range(len(proofs)):

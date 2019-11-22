@@ -31,10 +31,11 @@ def test_pc_log_batch(t):
 def test_double_batch_pc_log_batch(t):
     pc = PolyCommitLog()
     phi1 = polynomials_over(ZR).random(t)
-    phi2 = polynomials_over(ZR).random(2*t)
+    phi2 = polynomials_over(ZR).random(t)
     r = ZR.random()
     c1 = pc.commit(phi1, r)
     c2 = pc.commit(phi2, r)
     witnesses = pc.double_batch_create_witness([phi1, phi2], r)
     assert pc.verify_eval(c1, 4, phi1(4), witnesses[3])
+    assert pc.verify_eval(c2, 4, phi2(4), witnesses[3+len(witnesses)//2])
 

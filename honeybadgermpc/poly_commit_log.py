@@ -146,10 +146,10 @@ class PolyCommitLog:
         comms, t_hats, iproofs = prove_double_batch_inner_product_one_known(
             d_vecs, self.y_vecs, crs=[self.gs, self.u]
         )
+        k = 0
         for j in range(len(witnesses)):
-            k = 0
             witnesses[j] += [S, T_vec[j], Ds[k], mu, t_hats[j], iproofs[j]]
-            if (j+1)%len(phis)==0:
+            if (j+1)%(len(T_vec)//len(phis)) == 0:
                 k += 1
         return witnesses
 
