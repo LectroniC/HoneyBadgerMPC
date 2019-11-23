@@ -118,7 +118,6 @@ class PolyCommitLog:
         witnesses = [[] for _ in range(n)]
         for i in range(t + 1):
             S *= self.gs[i] ** s_vec[i]
-        # g^(<s,y_i>)
         for j in range(n):
             for i in range(t + 1):
                 sy_prods[j] += s_vec[i] * self.y_vecs[j][i]
@@ -149,9 +148,14 @@ class PolyCommitLog:
         k = 0
         for j in range(len(witnesses)):
             witnesses[j] += [S, T_vec[j], Ds[k], mu, t_hats[j], iproofs[j]]
-            if (j+1)%(len(T_vec)//len(phis)) == 0:
+            if (j+1)%(3*t+1) == 0:
                 k += 1
-        return witnesses
+        witnesses_2d = []
+        for i in range(len(witnesses) // (3 * t + 1)):
+            witnesses_2d.append([])
+            for j in range(3*t+1):
+                witnesses_2d[i].append(witnesses[i*(3*t+1)+j])
+        return witnesses_2d
 
     def verify_eval(self, c, i, phi_at_i, witness):
         t = witness[-1][0] - 1

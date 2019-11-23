@@ -36,6 +36,6 @@ def test_double_batch_pc_log_batch(t):
     c1 = pc.commit(phi1, r)
     c2 = pc.commit(phi2, r)
     witnesses = pc.double_batch_create_witness([phi1, phi2], r)
-    assert pc.verify_eval(c1, 4, phi1(4), witnesses[3])
-    assert pc.verify_eval(c2, 4, phi2(4), witnesses[3+len(witnesses)//2])
+    assert pc.verify_eval(c1, 4, phi1(4), witnesses[0][3])
+    assert pc.verify_eval(c2, 4, phi2(4), witnesses[1][3])
 
