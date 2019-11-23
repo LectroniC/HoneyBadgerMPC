@@ -422,48 +422,41 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
 # Precomputing u is recommended
 def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=None):
     def recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript):
+        row_length = len(b_vecs)//len(a_vecs)
         if n == 1:
             proofs = [None] * len(b_vecs)
-            i = 0
-            for j in range(len(proofs)):
-                proofs[j] = [[a_vecs[i][0]]]
-                if (j+1) % (len(b_vecs)/len(a_vecs)) == 0:
-                    i += 1
+            for i in range(len(proofs) // row_length):
+                for j in range(row_length):
+                    abs_idx = i * row_length + j
+                    proofs[abs_idx] = [[a_vecs[i][0]]]
             return proofs
         proofsteps = [[] for _ in range(len(b_vecs))]
         if n % 2 == 1:
-            i = 0
-            na = -1 * a_vecs[0][-1]
-            for j in range(len(P_vec)):
-                P_vec[j] *= g_vec[-1] ** (na) * u ** (na * b_vecs[j][-1])
-                if (j+1) % (len(b_vecs)/len(a_vecs)) == 0:
-                    if i + 1 < len(a_vecs):
-                        i += 1
-                        na = -1 * a_vecs[i][-1]
-                proofsteps[j].append(na)
+            for i in range(len(P_vec) // row_length):
+                na = -1 * a_vecs[i][-1]
+                for j in range(row_length):
+                    abs_idx = i * row_length + j
+                    P_vec[abs_idx] *= g_vec[-1] ** (na) * u ** (na * b_vecs[abs_idx][-1])
+                    proofsteps[abs_idx].append(na)
         n_p = n // 2
         cl_vec = [ZR(0) for _ in range(len(b_vecs))]
         cr_vec = [ZR(0) for _ in range(len(b_vecs))]
         L_vec = [None] * len(b_vecs)
         R_vec = [None] * len(b_vecs)
-
         Las = [G1.one() for _ in range(len(a_vecs))]
         Ras = [G1.one() for _ in range(len(a_vecs))]
         for j in range(len(a_vecs)):
             for i in range(n_p):
                 Las[j] *= g_vec[n_p:][i] ** a_vecs[j][:n_p][i]
                 Ras[j] *= g_vec[:n_p][i] ** a_vecs[j][n_p:][i]
-
-        k = 0
-        for j in range(len(b_vecs)):
-            for i in range(n_p):
-                cl_vec[j] += a_vecs[k][:n_p][i] * b_vecs[j][n_p:][i]
-                cr_vec[j] += a_vecs[k][n_p:][i] * b_vecs[j][:n_p][i]
-            L_vec[j] = Las[k] * (u ** cl_vec[j])
-            R_vec[j] = Ras[k] * (u ** cr_vec[j])
-            if (j + 1) % (len(b_vecs) / len(a_vecs)) == 0:
-                k += 1
-
+        for i in range(len(b_vecs) // row_length):
+            for j in range(row_length):
+                abs_idx = i * row_length + j
+                for k in range(n_p):
+                    cl_vec[abs_idx] += a_vecs[i][:n_p][k] * b_vecs[abs_idx][n_p:][k]
+                    cr_vec[abs_idx] += a_vecs[i][n_p:][k] * b_vecs[abs_idx][:n_p][k]
+                L_vec[abs_idx] = Las[i] * (u ** cl_vec[abs_idx])
+                R_vec[abs_idx] = Ras[i] * (u ** cr_vec[abs_idx])
         # Fiat Shamir
         # Make a merkle tree over everything that varies between verifiers
         # TODO: na should be in the transcript
@@ -495,13 +488,10 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
         Lax2Raxi2s = []
         for i in range(len(a_vecs)):
             Lax2Raxi2s.append(Las[i] ** x2 * Ras[i] ** xi2)
-        i = 0
-        for j in range(len(P_vec)):
-            # Instead of doing L_vec[j]**(x2)*P_vec[j]*R_vec[j]**(xi2), save computation
-            P_vec[j] *= Lax2Raxi2s[i] * u ** (x2 * cl_vec[j] + xi2 * cr_vec[j])
-            if (j + 1) % (len(b_vecs) / len(a_vecs)) == 0:
-                i += 1
-
+        for i in range(len(P_vec) // row_length):
+            for j in range(row_length):
+                abs_idx = i * row_length + j
+                P_vec[abs_idx] *= Lax2Raxi2s[i] * u ** (x2 * cl_vec[abs_idx] + xi2 * cr_vec[abs_idx])
         proofs = recursive_proofs(g_vec_p, a_vecs_p, b_vecs_p, u, n_p, P_vec, transcript)
 
         for j in range(len(proofs)):
@@ -526,13 +516,14 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
 
     iprods = [ZR(0) for _ in range(len(b_vecs))]
     P_vec = [None] * len(b_vecs)
-    k = 0
-    for j in range(len(b_vecs)):
-        for i in range(n):
-            iprods[j] += a_vecs[k][i] * b_vecs[j][i]
-        P_vec[j] = comms[k] * u ** iprods[j]
-        if (j+1) % (len(b_vecs)/len(a_vecs)) == 0:
-            k += 1
+
+    row_length = len(b_vecs)//len(a_vecs)
+    for i in range(len(P_vec) // row_length):
+        for j in range(row_length):
+            abs_idx = i * row_length + j
+            for k in range(n):
+                iprods[abs_idx] += a_vecs[i][k] * b_vecs[abs_idx][k]
+            P_vec[abs_idx] = comms[i] * u ** iprods[abs_idx]
     transcript = pickle.dumps(u)
     proofs = recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript)
     for j in range(len(proofs)):

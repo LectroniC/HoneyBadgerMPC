@@ -102,6 +102,7 @@ class PolyCommitLog:
     # The numbers of coefficients of the many phis are assumed to be the same.
     def double_batch_create_witness(self, phis, r, n=None):
         t = len(phis[0].coeffs) - 1
+        row_length = 3 * t + 1
         if n is None:
             # There are len(phis) * (3*degree+1) vectors in total.
             n = (3 * t + 1) * len(phis)
@@ -145,16 +146,15 @@ class PolyCommitLog:
         comms, t_hats, iproofs = prove_double_batch_inner_product_one_known(
             d_vecs, self.y_vecs, crs=[self.gs, self.u]
         )
-        k = 0
-        for j in range(len(witnesses)):
-            witnesses[j] += [S, T_vec[j], Ds[k], mu, t_hats[j], iproofs[j]]
-            if (j+1)%(3*t+1) == 0:
-                k += 1
+        for i in range(len(witnesses) // (row_length)):
+            for j in range(row_length):
+                abs_idx = i * row_length + j
+                witnesses[abs_idx] += [S, T_vec[j], Ds[i], mu, t_hats[abs_idx], iproofs[abs_idx]]
         witnesses_2d = []
-        for i in range(len(witnesses) // (3 * t + 1)):
+        for i in range(len(witnesses) // row_length):
             witnesses_2d.append([])
-            for j in range(3*t+1):
-                witnesses_2d[i].append(witnesses[i*(3*t+1)+j])
+            for j in range(row_length):
+                witnesses_2d[i].append(witnesses[i*row_length+j])
         return witnesses_2d
 
     def verify_eval(self, c, i, phi_at_i, witness):
