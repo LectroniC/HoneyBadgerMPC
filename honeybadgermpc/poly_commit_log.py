@@ -105,21 +105,21 @@ class PolyCommitLog:
         row_length = 3 * t + 1
         if n is None:
             # There are len(phis) * (3*degree+1) vectors in total.
-            n = (3 * t + 1) * len(phis)
-        if len(self.y_vecs) < n:
+            n = row_length * len(phis)
+        if len(self.y_vecs) < row_length:
             i = len(self.y_vecs)
-            while i < n:
-                self.y_vecs.append([ZR(i % (3 * t + 1) + 1) ** j for j in range(t + 1)])
+            while i < row_length:
+                self.y_vecs.append([ZR(i + 1) ** j for j in range(t + 1)])
                 i += 1
         # length t
         s_vec = [ZR.random() for _ in range(t + 1)]
-        sy_prods = [ZR(0) for _ in range(n)]
+        sy_prods = [ZR(0) for _ in range(row_length)]
         S = G1.one()
         T_vec = [None] * n
         witnesses = [[] for _ in range(n)]
         for i in range(t + 1):
             S *= self.gs[i] ** s_vec[i]
-        for j in range(n):
+        for j in range(row_length):
             for i in range(t + 1):
                 sy_prods[j] += s_vec[i] * self.y_vecs[j][i]
             T_vec[j] = self.gs[0] ** sy_prods[j]
@@ -127,13 +127,14 @@ class PolyCommitLog:
         S *= self.h ** rho
         # Fiat Shamir
         tree = MerkleTree()
-        for j in range(n):
+        for j in range(row_length):
             tree.append(pickle.dumps(T_vec[j]))
         roothash = tree.get_root_hash()
-        for j in range(n):
-            branch = tree.get_branch(j)
-            witnesses[j].append(roothash)
-            witnesses[j].append(branch)
+        for j in range(row_length):
+            for i in range(len(phis)):
+                branch = tree.get_branch(j)
+                witnesses[i*row_length+j].append(roothash)
+                witnesses[i*row_length+j].append(branch)
         challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
         d_vecs = []
         for i in range(len(phis)):

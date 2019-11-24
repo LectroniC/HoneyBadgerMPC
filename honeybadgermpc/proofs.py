@@ -500,32 +500,38 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
             proofs[j].append(proofsteps[j])
         return proofs
 
-    n = len(a_vecs[0])
+    t = len(a_vecs[0])
     if crs is None:
         g_vec = G1.hash(b"honeybadgerg", length=n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
-        g_vec = g_vec[:n]
+        g_vec = g_vec[:t]
     if comms is None:
         comms = []
         for j in range(len(a_vecs)):
             comms.append(G1.one())
-            for i in range(n):
+            for i in range(t):
                 comms[j] *= g_vec[i] ** a_vecs[j][i]
 
-    iprods = [ZR(0) for _ in range(len(b_vecs))]
-    P_vec = [None] * len(b_vecs)
+    iprods = [ZR(0) for _ in range(len(b_vecs)*len(a_vecs))]
+    P_vecs = [None] * (len(b_vecs) * len(a_vecs))
 
-    row_length = len(b_vecs)//len(a_vecs)
-    for i in range(len(P_vec) // row_length):
-        for j in range(row_length):
+    row_length = len(b_vecs)
+    for i in range(len(a_vecs)):
+        for j in range(len(b_vecs)):
             abs_idx = i * row_length + j
-            for k in range(n):
-                iprods[abs_idx] += a_vecs[i][k] * b_vecs[abs_idx][k]
-            P_vec[abs_idx] = comms[i] * u ** iprods[abs_idx]
+            for k in range(t):
+                iprods[abs_idx] += a_vecs[i][k] * b_vecs[j][k]
+            P_vecs[abs_idx] = comms[i] * u ** iprods[abs_idx]
     transcript = pickle.dumps(u)
-    proofs = recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript)
+    proofsize = len(a_vecs) * len(b_vecs)
+    i = 0
+    b_vecs_p = []
+    while i < proofsize:
+        b_vecs_p.append(b_vecs[i%len(b_vecs)])
+        i += 1
+    proofs = recursive_proofs(g_vec, a_vecs, b_vecs_p, u, t, P_vecs, transcript)
     for j in range(len(proofs)):
-        proofs[j].insert(0, n)
+        proofs[j].insert(0, t)
     return [comms, iprods, proofs]
