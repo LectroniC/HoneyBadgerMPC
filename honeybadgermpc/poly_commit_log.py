@@ -99,7 +99,9 @@ class PolyCommitLog:
         return witnesses
 
     # Create witnesses for points 1 to n. n defaults to 3*degree+1 if unset.
-    # The numbers of coefficients of the many phis are assumed to be the same.
+    # Comparing to batch_create_witness, this takes a list of phis and reuses challenges across
+    # len(phis) * len(y_vecs) number of witnesses. The returned witnesses_2d is a list of lists
+    # where witnesses_2d[i][j] returns the combination of phi_i on points j.
     def double_batch_create_witness(self, phis, r, n=None):
         t = len(phis[0].coeffs) - 1
         row_length = 3 * t + 1
@@ -133,8 +135,8 @@ class PolyCommitLog:
         for j in range(row_length):
             for i in range(len(phis)):
                 branch = tree.get_branch(j)
-                witnesses[i*row_length+j].append(roothash)
-                witnesses[i*row_length+j].append(branch)
+                witnesses[i * row_length + j].append(roothash)
+                witnesses[i * row_length + j].append(branch)
         challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
         d_vecs = []
         for i in range(len(phis)):
@@ -150,12 +152,13 @@ class PolyCommitLog:
         for i in range(len(witnesses) // (row_length)):
             for j in range(row_length):
                 abs_idx = i * row_length + j
-                witnesses[abs_idx] += [S, T_vec[j], Ds[i], mu, t_hats[abs_idx], iproofs[abs_idx]]
+                witnesses[abs_idx] += [S, T_vec[j], Ds[i], mu, t_hats[abs_idx], iproofs[i][j]]
+        # Transform witnesses into a better structured 2D array.
         witnesses_2d = []
         for i in range(len(witnesses) // row_length):
             witnesses_2d.append([])
             for j in range(row_length):
-                witnesses_2d[i].append(witnesses[i*row_length+j])
+                witnesses_2d[i].append(witnesses[i * row_length + j])
         return witnesses_2d
 
     def verify_eval(self, c, i, phi_at_i, witness):

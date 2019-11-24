@@ -420,6 +420,10 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
 
 # Inner product argument where one vector (b_vec) is known by both parties
 # Precomputing u is recommended
+# The proofs_p is a list of lists where
+# proofs_p[i][j] returns the proof of dot product of a_vecs[i] on b_vecs[j].
+# b_vecs is expanded first so that len(New b_vecs) = len(a_vecs) * len(b_vecs)
+# for the bullet proof helper function.
 def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=None):
     def recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript):
         row_length = len(b_vecs)//len(a_vecs)
@@ -529,9 +533,15 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
     i = 0
     b_vecs_p = []
     while i < proofsize:
-        b_vecs_p.append(b_vecs[i%len(b_vecs)])
+        b_vecs_p.append(b_vecs[i % len(b_vecs)])
         i += 1
     proofs = recursive_proofs(g_vec, a_vecs, b_vecs_p, u, t, P_vecs, transcript)
     for j in range(len(proofs)):
         proofs[j].insert(0, t)
-    return [comms, iprods, proofs]
+    # Transform the proofs into a list of lists
+    proofs_p = []
+    for i in range(len(a_vecs)):
+        proofs_p.append([])
+        for j in range(len(proofs)//len(a_vecs)):
+            proofs_p[i].append(proofs[i*(len(proofs)//len(a_vecs))+j])
+    return [comms, iprods, proofs_p]
