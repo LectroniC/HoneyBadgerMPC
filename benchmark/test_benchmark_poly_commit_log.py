@@ -27,3 +27,13 @@ def test_benchmark_create_batch_witness(benchmark, t):
     phi = polynomials_over(ZR).random(t)
     pc.preprocess_prover()
     benchmark(pc.batch_create_witness, phi, r, n=3 * t + 1)
+
+@mark.parametrize("t", [3, 10, 20, 33])
+def test_benchmark_double_create_batch_witness_10_polys(benchmark, t):
+    pc = PolyCommitLog(degree_max=t)
+    r = ZR.random()
+    phis = []
+    for _ in range(10):
+        phis.append(polynomials_over(ZR).random(t))
+    pc.preprocess_prover()
+    benchmark(pc.double_batch_create_witness, phis, r, n=(3 * t + 1)*len(phis))

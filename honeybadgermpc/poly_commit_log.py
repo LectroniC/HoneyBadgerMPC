@@ -117,7 +117,7 @@ class PolyCommitLog:
         s_vec = [ZR.random() for _ in range(t + 1)]
         sy_prods = [ZR(0) for _ in range(row_length)]
         S = G1.one()
-        T_vec = [None] * n
+        T_vec = [None] * row_length
         witnesses = [[] for _ in range(n)]
         for i in range(t + 1):
             S *= self.gs[i] ** s_vec[i]
@@ -132,8 +132,8 @@ class PolyCommitLog:
         for j in range(row_length):
             tree.append(pickle.dumps(T_vec[j]))
         roothash = tree.get_root_hash()
-        for j in range(row_length):
-            for i in range(len(phis)):
+        for i in range(len(phis)):
+            for j in range(row_length):
                 branch = tree.get_branch(j)
                 witnesses[i * row_length + j].append(roothash)
                 witnesses[i * row_length + j].append(branch)
