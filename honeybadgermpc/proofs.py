@@ -545,3 +545,77 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
         for j in range(len(proofs)//len(a_vecs)):
             proofs_p[i].append(proofs[i*(len(proofs)//len(a_vecs))+j])
     return [comms, iprods, proofs_p]
+
+
+# Verify multiple inner product arguments (with one vector known) that was generated in a batch
+def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, crs=None):
+    def recursive_verify(g_vec, b_vec, u, proofs, n, Ps, transcript):
+        if n == 1:
+            ret = True
+            for i in range(len(proofs)):
+                a, b = proofs[i][0][0], b_vec[0]
+                ret &= Ps[i] == g_vec[0] ** a * u ** (a * b)
+            return ret
+        Ls = []
+        Rs = []
+        branches = []
+        last_roothash = None
+        if n % 2 == 1:
+            for i in range(len(proofs)):
+                [na, roothash, branch, L, R] = proofs[i][-1]
+                Ps[i] *= g_vec[-1] ** (na) * u ** (na * b_vec[-1])
+                Ls.append(L)
+                Rs.append(R)
+                branches.append(branch)
+                if i!=0:
+                    assert last_roothash == roothash
+                else:
+                    last_roothash = roothash
+        else:
+            for i in range(len(proofs)):
+                [roothash, branch, L, R] = proofs[i][-1]
+                Ls.append(L)
+                Rs.append(R)
+                branches.append(branch)
+                if i!=0:
+                    assert last_roothash == roothash
+                else:
+                    last_roothash = roothash
+
+        # TODO: find a way to make the protocol abort nicely if this fails
+        for i in range(len(proofs)):
+            assert MerkleTree.verify_membership(
+                pickle.dumps([b_vec, Ps[i], Ls[i], Rs[i]]), branches[i], last_roothash
+            )
+        transcript += pickle.dumps([g_vec, last_roothash])
+        x = ZR.hash(transcript)
+        xi = 1 / x
+        n_p = n // 2
+        g_vec_p = []
+        b_vec_p = []
+        for i in range(n_p):
+            g_vec_p.append(g_vec[:n_p][i] ** xi * g_vec[n_p:][i] ** x)
+            b_vec_p.append(b_vec[:n_p][i] * xi + b_vec[n_p:][i] * x)
+        Ps_p = []
+        for i in range(len(proofs)):
+            Ps_p.append(Ls[i] ** (x * x) * Ps[i] * Rs[i] ** (xi * xi))
+        proofs_p = []
+        for i in range(len(proofs)):
+            proofs_p.append(proofs[i][:-1])
+        return recursive_verify(g_vec_p, b_vec_p, u, proofs_p, n_p, Ps_p, transcript)
+
+    n = proofs[0][0]
+    iproofs = []
+    for i in range(len(proofs)):
+        iproofs.append(proofs[i][1:])
+    if crs is None:
+        g_vec = G1.hash(b"honeybadgerg", length=n)
+        u = G1.hash(b"honeybadgeru")
+    else:
+        [g_vec, u] = crs
+        g_vec = g_vec[:n]
+    Ps = []
+    for i in range(len(comms)):
+        Ps.append(comms[i] * u ** iprods[i])
+    transcript = pickle.dumps(u)
+    return recursive_verify(g_vec, b_vec, u, iproofs, n, Ps, transcript)
