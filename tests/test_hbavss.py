@@ -5,7 +5,7 @@ from pickle import dumps
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_const import gen_pc_const_crs
 from honeybadgermpc.betterpairing import G1, ZR
-from honeybadgermpc.hbavss import HbAvssLight, HbAvssBatch
+from honeybadgermpc.hbavss import HbAvssLight, HbAvssBatch, HbAvssBatchLoglin
 from honeybadgermpc.mpc import TaskProgramRunner
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 from honeybadgermpc.utils.misc import print_exception_callback
@@ -21,6 +21,88 @@ def get_avss_params(n, t):
         private_keys[i] = ZR.random()
         public_keys[i] = pow(g, private_keys[i])
     return g, h, public_keys, private_keys
+
+@mark.asyncio
+async def test_hbavss_batch(test_router):
+    t = 2
+    n = 3 * t + 1
+
+    g, h, pks, sks = get_avss_params(n, t)
+    sends, recvs, _ = test_router(n)
+    crs = gen_pc_const_crs(t, g=g, h=h)
+
+    values = [ZR.random()] * (t + 1)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+
+    shares = [None] * n
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = HbAvssBatch(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        outputs = await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        shares = [output[2] for output in outputs]
+        for task in avss_tasks:
+            task.cancel()
+
+    fliped_shares = list(map(list, zip(*shares)))
+    recovered_values = []
+    for item in fliped_shares:
+        recovered_values.append(
+            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
+        )
+
+    assert recovered_values == values
+
+@mark.asyncio
+async def test_hbavss_loglin(test_router):
+    t = 2
+    n = 3 * t + 1
+
+    g, h, pks, sks = get_avss_params(n, t)
+    sends, recvs, _ = test_router(n)
+    crs = gen_pc_const_crs(t, g=g, h=h)
+
+    values = [ZR.random()] * (t + 1)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+
+    shares = [None] * n
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = HbAvssBatchLoglin(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        outputs = await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        shares = [output[2] for output in outputs]
+        for task in avss_tasks:
+            task.cancel()
+
+    fliped_shares = list(map(list, zip(*shares)))
+    recovered_values = []
+    for item in fliped_shares:
+        recovered_values.append(
+            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
+        )
+
+    assert recovered_values == values
 
 
 @mark.asyncio
@@ -339,46 +421,6 @@ async def test_hbavss_light_batch_share_fault(test_router):
         )
 
 
-@mark.asyncio
-async def test_hbavss_batch(test_router):
-    t = 2
-    n = 3 * t + 1
-
-    g, h, pks, sks = get_avss_params(n, t)
-    sends, recvs, _ = test_router(n)
-    crs = gen_pc_const_crs(t, g=g, h=h)
-
-    values = [ZR.random()] * (t + 1)
-    avss_tasks = [None] * n
-    dealer_id = randint(0, n - 1)
-
-    shares = [None] * n
-    with ExitStack() as stack:
-        hbavss_list = [None] * n
-        for i in range(n):
-            hbavss = HbAvssBatch(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
-            hbavss_list[i] = hbavss
-            stack.enter_context(hbavss)
-            if i == dealer_id:
-                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
-            else:
-                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
-            avss_tasks[i].add_done_callback(print_exception_callback)
-        outputs = await asyncio.gather(
-            *[hbavss_list[i].output_queue.get() for i in range(n)]
-        )
-        shares = [output[2] for output in outputs]
-        for task in avss_tasks:
-            task.cancel()
-
-    fliped_shares = list(map(list, zip(*shares)))
-    recovered_values = []
-    for item in fliped_shares:
-        recovered_values.append(
-            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
-        )
-
-    assert recovered_values == values
 
 
 @mark.asyncio

@@ -5,7 +5,7 @@ from honeybadgermpc.betterpairing import ZR, interpolate_g1_at_x, G1
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_const import PolyCommitConst
 from honeybadgermpc.poly_commit_lin import PolyCommitLin
-from honeybadgermpc.polu_commit_log import  PolyCommitLog
+from honeybadgermpc.poly_commit_log import  PolyCommitLog
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 from honeybadgermpc.broadcast.reliablebroadcast import reliablebroadcast
 from honeybadgermpc.broadcast.avid import AVID
@@ -681,9 +681,8 @@ def get_avss_params(n, t):
 
 class HbAvssBatchLoglin:
     def __init__(
-        self, batch_size, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
+        self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
     ):  # (# noqa: E501)
-        self.batch_size = batch_size
         self.public_keys, self.private_key = public_keys, private_key
         self.n, self.t, self.my_id = n, t, my_id
         assert len(crs) == 3
@@ -704,10 +703,10 @@ class HbAvssBatchLoglin:
         if pc is not None:
             self.poly_commit = pc
         else:
-            self.poly_commit = PolyCommitConst(crs, field=self.field)
-            self.batch_poly_commit = PolyCommitLog(crs, field=self.field)
-            self.poly_commit.preprocess_prover()
-            self.poly_commit.preprocess_verifier()
+            # self.poly_commit = PolyCommitConst(crs, field=self.field)
+            self.poly_commit = PolyCommitLog(crs)
+            #self.poly_commit.preprocess_prover()
+            #self.poly_commit.preprocess_verifier()
 
         self.avid_msg_queue = asyncio.Queue()
         self.tasks = []
@@ -848,7 +847,6 @@ class HbAvssBatchLoglin:
                 kdi = pow(ephemeral_public_key, self.private_key)
                 # The third value doesn't matter
                 multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
-                # TODO: Return
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                 retrieved_msg = await avid.retrieve(tag, sender)
@@ -904,9 +902,6 @@ class HbAvssBatchLoglin:
 
         ephemeral_secret_key = self.field.random()
         ephemeral_public_key = pow(self.g, ephemeral_secret_key)
-        # for each party Pi and each k ∈ [t+1]
-        #   1. w[i][k] <- CreateWitnesss(Ck,auxk,i)
-        #   2. z[i][k] <- EncPKi(φ(i,k), w[i][k])
         dispersal_msg_list = [None] * n
         witnesses = self.poly_commit.double_batch_create_witness(phi, r)
         for i in range(n):
