@@ -467,6 +467,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
         tree = MerkleTree()
         for j in range(len(b_vecs)):
             tree.append(pickle.dumps([b_vecs[j], P_vec[j], L_vec[j], R_vec[j]]))
+            #tree.append(str.encode(str(b_vecs[j]) + str(P_vec[j]) + str(L_vec[j]) + str(R_vec[j])))
         roothash = tree.get_root_hash()
         for j in range(len(b_vecs)):
             branch = tree.get_branch(j)
@@ -497,7 +498,6 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
                 abs_idx = i * row_length + j
                 P_vec[abs_idx] *= Lax2Raxi2s[i] * u ** (x2 * cl_vec[abs_idx] + xi2 * cr_vec[abs_idx])
         proofs = recursive_proofs(g_vec_p, a_vecs_p, b_vecs_p, u, n_p, P_vec, transcript)
-
         for j in range(len(proofs)):
             proofsteps[j].append(L_vec[j])
             proofsteps[j].append(R_vec[j])
@@ -549,6 +549,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
 
 # Verify multiple inner product arguments (with one vector known) that was generated in a batch
 def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, crs=None):
+    print("here")
     def recursive_verify(g_vec, b_vec, u, proofs, n, Ps, transcript):
         if n == 1:
             ret = True

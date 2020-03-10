@@ -10,7 +10,6 @@ from honeybadgermpc.proofs import (
 )
 import pickle
 
-
 class PolyCommitLog:
     def __init__(self, crs=None, degree_max=33):
         if crs is None:
