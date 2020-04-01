@@ -2,6 +2,7 @@ from pytest import mark
 from honeybadgermpc.betterpairing import ZR
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_log import PolyCommitLog
+import cProfile
 
 """
 @mark.parametrize("t", [3, 10, 20, 33])
@@ -121,3 +122,20 @@ def test_benchmark_batch_creation(benchmark, t):
         cs.append(c_curr)
     benchmark(pc.double_batch_create_witness, phis, r)
 
+if __name__ == "__main__":
+    t = 33
+    #t = 2
+    pc = PolyCommitLog(degree_max=t)
+    pc.preprocess_prover()
+    phis = []
+    r = ZR.random()
+    cs = []
+    for _ in range(3 * t + 1):
+        phi_curr = polynomials_over(ZR).random(t)
+        phis.append(phi_curr)
+        c_curr = pc.commit(phi_curr, r)
+        cs.append(c_curr)
+    cProfile.run("pc.double_batch_create_witness(phis, r)")
+    #witnesses = pc.double_batch_create_witness(phis, r)
+    #print(len(witnesses))
+    #print(len(witnesses[1]))

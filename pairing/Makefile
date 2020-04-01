@@ -16,7 +16,7 @@ help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
 ## remove all build, test, coverage and Python artifacts
-clean: clean-build clean-pyc clean-test clean-rust 
+clean: clean-build clean-pyc clean-rust 
 
 clean-build: ## remove build artifacts
 	rm -fr build/
