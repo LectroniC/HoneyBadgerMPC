@@ -84,7 +84,7 @@ def test_benchmark_verify_10_polys(benchmark, t):
     benchmark(pc.verify_eval, cs[0], 4, phis[0](4), witnesses[0][3])
 """
 
-
+"""
 @mark.parametrize("t", [1, 2, 5, 11, 21])
 def test_benchmark_batch_verify(benchmark, t):
     pc = PolyCommitLog(degree_max=t)
@@ -97,6 +97,7 @@ def test_benchmark_batch_verify(benchmark, t):
         phis.append(phi_curr)
         c_curr = pc.commit(phi_curr, r)
         cs.append(c_curr)
+    pc.preprocess_prover()
     witnesses = pc.double_batch_create_witness(phis, r)
 
     i = 4
@@ -106,6 +107,7 @@ def test_benchmark_batch_verify(benchmark, t):
         phis_at_4.append(phis[j](i))
         witnesses_p.append(witnesses[j][i - 1])
     benchmark(pc.batch_verify_eval, cs, i, phis_at_4, witnesses_p)
+"""
 
 @mark.parametrize("t", [0, 1, 2, 5, 11, 21])
 def test_benchmark_batch_creation(benchmark, t):
@@ -119,5 +121,6 @@ def test_benchmark_batch_creation(benchmark, t):
         phis.append(phi_curr)
         c_curr = pc.commit(phi_curr, r)
         cs.append(c_curr)
+    pc.preprocess_prover()
     benchmark(pc.double_batch_create_witness, phis, r)
 

@@ -549,7 +549,6 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
 
 # Verify multiple inner product arguments (with one vector known) that was generated in a batch
 def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, crs=None):
-    print("here")
     def recursive_verify(g_vec, b_vec, u, proofs, n, Ps, transcript):
         if n == 1:
             ret = True
