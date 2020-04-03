@@ -86,9 +86,10 @@ def test_benchmark_verify_10_polys(benchmark, t):
 """
 
 
-@mark.parametrize("t", [1, 2, 5, 11, 21])
+@mark.parametrize("t", [1, 2, 5, 11, 21, 33])
 def test_benchmark_batch_verify(benchmark, t):
     pc = PolyCommitLog(degree_max=t)
+    pc.preprocess_prover()
     r = ZR.random()
     phis = []
     r = ZR.random()
@@ -108,18 +109,28 @@ def test_benchmark_batch_verify(benchmark, t):
         witnesses_p.append(witnesses[j][i - 1])
     benchmark(pc.batch_verify_eval, cs, i, phis_at_4, witnesses_p)
 
-@mark.parametrize("t", [0, 1, 2, 5, 11, 21])
+@mark.parametrize("t", [1, 2, 5, 11, 21, 33])
 def test_benchmark_batch_creation(benchmark, t):
     pc = PolyCommitLog(degree_max=t)
+    pc.preprocess_prover()
     r = ZR.random()
     phis = []
-    r = ZR.random()
-    cs = []
     for _ in range(3 * t + 1):
         phi_curr = polynomials_over(ZR).random(t)
         phis.append(phi_curr)
-        c_curr = pc.commit(phi_curr, r)
-        cs.append(c_curr)
+    benchmark(pc.double_batch_create_witness, phis, r)
+
+@mark.parametrize("polycount", [1, 3, 10, 33, 100, 300])
+def test_benchmark_prover_dbatch_vary_poly(benchmark, polycount):
+    t = 20
+    pc = PolyCommitLog(degree_max=t)
+    pc.preprocess_prover()
+    r = ZR.random()
+    phis = []
+    cs = []
+    for _ in range(polycount):
+        phi_curr = polynomials_over(ZR).random(t)
+        phis.append(phi_curr)
     benchmark(pc.double_batch_create_witness, phis, r)
 
 if __name__ == "__main__":
