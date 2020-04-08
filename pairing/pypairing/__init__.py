@@ -11,6 +11,10 @@ from .pypairing import (
     PyFq12,
     PyFqRepr,
     vec_sum,
+    hashfrs,
+    hashg1s,
+    dotprod,
+    condense_list
 )
 
 __all__ = [
@@ -23,4 +27,8 @@ __all__ = [
     "PyFq12",
     "PyFqRepr",
     "vec_sum",
+    "hashfrs",
+    "hashg1s",
+    "dotprod",
+    "condense_list"
 ]

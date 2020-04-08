@@ -1,7 +1,8 @@
-﻿from pypairing import PyFq, PyFq2, PyFq12, PyFqRepr, PyG1, PyG2, PyFr
+﻿from pypairing import PyFq, PyFq2, PyFq12, PyFqRepr, PyG1, PyG2, PyFr, hashg1s, hashfrs, dotprod, condense_list
 import random
 import re
 import struct
+import gc
 from hashlib import sha256
 
 # Order of BLS group
@@ -761,6 +762,9 @@ class ZR:
 
     def __setstate__(self, d):
         self.__init__(d)
+        
+    def is_zero(self):
+        return self == 0
 
     @staticmethod
     def random(seed=None):
@@ -812,3 +816,41 @@ def interpolate_g1_at_x(coords, x, order=-1):
     for i in range(order):
         out = out * (sortedcoords[i][1] ** (lagrange_at_x(s, xs[i], x)))
     return out
+
+def hashg1list(g1list):
+    pyg1list = [item.pyg1 for item in g1list]
+    return(hashg1s(pyg1list))
+
+def hashzrlist(zrlist):
+    pyfrlist = [item.val for item in zrlist]
+    return(hashfrs(pyfrlist))
+
+def hash_list_to_bytes(inlist):
+    sumstr = ""
+    for item in inlist:
+        if type(item) is not str:
+            entry = str(item)
+            sumstr.join(entry)
+        else:
+            sumstr.join(item)
+    hashout = sha256(sumstr.encode()).digest()
+    return hashout
+    
+def precomp_list(list, level=5):
+    for item in list:
+        item.preprocess(level)
+
+def inner_product(zrlista, zrlistb):
+    #pyfrlista, pyfrlistb = [], []
+    assert len(zrlista) == len(zrlistb)
+    pyfrlista = [item.val for item in zrlista]
+    pyfrlistb = [item.val for item in zrlistb]
+    #for i in range(len(zrlista)):
+    #    pyfrlista.append(zrlista[i].val)
+    #    pyfrlistb.append(zrlistb[i].val)
+    out = ZR(0)
+    dotprod(out.val, pyfrlista, pyfrlistb)
+    return(out)
+    
+
+        

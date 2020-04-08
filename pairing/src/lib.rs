@@ -16,12 +16,15 @@
 extern crate pyo3;
 
 use pyo3::prelude::*;
-
+use pyo3::types::PyList;
+use std::convert::TryFrom;
 
 extern crate byteorder;
 #[macro_use]
 extern crate ff;
 extern crate rand;
+extern crate sha2;
+extern crate hex;
 
 #[cfg(test)]
 pub mod tests;
@@ -36,6 +39,8 @@ use std::error::Error;
 use std::fmt;
 use std::io::{self, Write};
 use rand::{Rand, Rng, SeedableRng, XorShiftRng, ChaChaRng};
+use sha2::{Sha256, Sha512, Digest};
+
 
 fn hex_to_bin (hexstr: &String) -> String
 {
@@ -169,13 +174,13 @@ struct PyG1 {
 impl PyG1 {
 
     #[new]
-    fn __new__(obj: &PyRawObject) -> PyResult<()>{
+    fn new() -> Self {
         let g =  G1::one();
-        obj.init(|t| PyG1{
+        PyG1{
             g1: g,
             pp: Vec::new(),
             pplevel : 0
-        })
+        }
     }
 
     fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
@@ -273,7 +278,7 @@ impl PyG1 {
         Ok(())
     }
 
-    fn add_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn add_assign(&mut self, other: &PyG1) -> PyResult<()> {
         self.g1.add_assign(&other.g1);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -282,7 +287,7 @@ impl PyG1 {
         Ok(())
     }
 
-    fn sub_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn sub_assign(&mut self, other: &PyG1) -> PyResult<()> {
         self.g1.sub_assign(&other.g1);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -304,12 +309,12 @@ impl PyG1 {
     }
 
     /// a.equals(b)
-    fn equals(&self, other: &Self) -> bool {
+    fn equals(&self, other: &PyG1) -> bool {
         self.g1 == other.g1
     }
 
     /// Copy other into self
-    fn copy(&mut self, other: &Self) -> PyResult<()> {
+    fn copy(&mut self, other: &PyG1) -> PyResult<()> {
         self.g1 = other.g1;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -323,7 +328,9 @@ impl PyG1 {
     }
 
     pub fn __str__(&self) -> PyResult<String> {
-        Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
+        let aff = self.g1.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+        //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
     }
 
     //Creates preprocessing elements to allow fast scalar multiplication.
@@ -399,13 +406,13 @@ struct PyG2 {
 impl PyG2 {
 
     #[new]
-    fn __new__(obj: &PyRawObject) -> PyResult<()>{
+    fn new() -> Self {
         let g =  G2::one();
-        obj.init(|t| PyG2{
+        PyG2{
             g2: g,
             pp: Vec::new(),
             pplevel : 0
-        })
+        }
     }
 
     fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
@@ -503,7 +510,7 @@ impl PyG2 {
         Ok(())
     }
 
-    fn add_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn add_assign(&mut self, other: &PyG2) -> PyResult<()> {
         self.g2.add_assign(&other.g2);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -512,7 +519,7 @@ impl PyG2 {
         Ok(())
     }
 
-    fn sub_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn sub_assign(&mut self, other: &PyG2) -> PyResult<()> {
         self.g2.sub_assign(&other.g2);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -521,7 +528,7 @@ impl PyG2 {
         Ok(())
     }
 
-    fn mul_assign(&mut self, other:&PyFr) -> PyResult<()> {
+    fn mul_assign(&mut self, other: &PyFr) -> PyResult<()> {
         self.g2.mul_assign(other.fr);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -531,12 +538,12 @@ impl PyG2 {
     }
 
     /// a.equals(b)
-    fn equals(&self, other: &Self) -> bool {
+    fn equals(&self, other: &PyG2) -> bool {
         self.g2 == other.g2
     }
 
     /// Copy other into self
-    fn copy(&mut self, other: &Self) -> PyResult<()> {
+    fn copy(&mut self, other: &PyG2) -> PyResult<()> {
         self.g2 = other.g2;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -548,7 +555,9 @@ impl PyG2 {
         Ok(format!("({}, {}, {})",self.g2.x, self.g2.y, self.g2.z))
     }
     pub fn __str__(&self) -> PyResult<String> {
-        Ok(format!("({}, {})",self.g2.into_affine().x, self.g2.into_affine().y))
+        let aff = self.g2.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+        //Ok(format!("({}, {})",self.g2.into_affine().x, self.g2.into_affine().y))
     }
     fn preprocess(&mut self, level: usize) -> PyResult<()> {
         self.pplevel = level;
@@ -614,11 +623,11 @@ struct PyFr {
 impl PyFr {
 
     #[new]
-    fn __new__(obj: &PyRawObject, s1: u64, s2: u64, s3: u64, s4: u64) -> PyResult<()>{
+    fn new(s1: u64, s2: u64, s3: u64, s4: u64) -> Self {
         let f = Fr::from_repr(FrRepr([s1,s2,s3,s4])).unwrap();
-        obj.init(|t| PyFr{
+        PyFr{
             fr: f,
-        })
+        }
     }
     
     fn one(&mut self) -> PyResult<()> {
@@ -656,17 +665,17 @@ impl PyFr {
         Ok(())
     }
 
-    fn add_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn add_assign(&mut self, other: &PyFr) -> PyResult<()> {
         self.fr.add_assign(&other.fr);
         Ok(())
     }
 
-    fn sub_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn sub_assign(&mut self, other: &PyFr) -> PyResult<()> {
         self.fr.sub_assign(&other.fr);
         Ok(())
     }
 
-    fn mul_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn mul_assign(&mut self, other: &PyFr) -> PyResult<()> {
         self.fr.mul_assign(&other.fr);
         Ok(())
     }
@@ -677,12 +686,12 @@ impl PyFr {
     }
 
     /// a.equals(b)
-    fn equals(&self, other: &Self) -> bool {
+    fn equals(&self, other: &PyFr) -> bool {
         self.fr == other.fr
     }
 
     /// Copy other into self
-    fn copy(&mut self, other: &Self) -> PyResult<()> {
+    fn copy(&mut self, other: &PyFr) -> PyResult<()> {
         self.fr = other.fr;
         Ok(())
     }
@@ -700,11 +709,11 @@ struct PyFq {
  #[pymethods]
 impl PyFq {
     #[new]
-    fn __new__(obj: &PyRawObject) -> PyResult<()>{
+    fn new() -> Self {
         let f =  Fq::zero();
-        obj.init(|t| PyFq{
+        PyFq{
             fq: f,
-        })
+        }
     }
     fn from_repr(&mut self, py_fq_repr: &PyFqRepr) -> PyResult<()> {
         let f = Fq::from_repr(py_fq_repr.fq_repr).unwrap();
@@ -720,11 +729,11 @@ struct PyFq2 {
  #[pymethods]
 impl PyFq2 {
     #[new]
-    fn __new__(obj: &PyRawObject) -> PyResult<()>{
+    fn new() -> Self {
         let f =  Fq2::zero();
-        obj.init(|t| PyFq2{
+        PyFq2{
             fq2: f,
-        })
+        }
     }
     fn from_repr(&mut self, py_fq_repr: &PyFqRepr, py_fq_repr2: &PyFqRepr) -> PyResult<()> {
         let c0 = Fq::from_repr(py_fq_repr.fq_repr).unwrap();
@@ -742,11 +751,11 @@ struct PyFq6 {
  #[pymethods]
 impl PyFq6 {
     #[new]
-    fn __new__(obj: &PyRawObject) -> PyResult<()>{
+    fn new() -> Self {
         let f =  Fq6::zero();
-        obj.init(|t| PyFq6{
+        PyFq6{
             fq6: f,
-        })
+        }
     }
 }
 
@@ -757,11 +766,11 @@ struct PyFqRepr {
  #[pymethods]
 impl PyFqRepr {
      #[new]
-    fn __new__(obj: &PyRawObject, s1: u64, s2: u64, s3: u64, s4: u64, s5: u64, s6: u64) -> PyResult<()>{
+    fn new(s1: u64, s2: u64, s3: u64, s4: u64, s5: u64, s6: u64) -> Self {
         let f = FqRepr([s1,s2,s3,s4,s5,s6]);
-        obj.init(|t| PyFqRepr{
+        PyFqRepr{
             fq_repr: f,
-        })
+        }
     }
 }
 
@@ -775,13 +784,13 @@ struct PyFq12 {
 #[pymethods]
 impl PyFq12 {
     #[new]
-    fn __new__(obj: &PyRawObject) -> PyResult<()>{
+    fn new() -> Self {
         let q =  Fq12::zero();
-        obj.init(|t| PyFq12{
+        PyFq12{
             fq12: q,
             pp: Vec::new(),
             pplevel : 0
-        })
+        }
     }
 
     fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
@@ -848,7 +857,7 @@ impl PyFq12 {
         Ok(format!("({} + {} * w)",self.fq12.c0, self.fq12.c1 ))
     }
 
-    fn add_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn add_assign(&mut self, other: &PyFq12) -> PyResult<()> {
         self.fq12.add_assign(&other.fq12);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -857,7 +866,7 @@ impl PyFq12 {
         Ok(())
     }
 
-    fn sub_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn sub_assign(&mut self, other: &PyFq12) -> PyResult<()> {
         self.fq12.sub_assign(&other.fq12);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -866,7 +875,7 @@ impl PyFq12 {
         Ok(())
     }
 
-    fn mul_assign(&mut self, other: &Self) -> PyResult<()> {
+    fn mul_assign(&mut self, other: &PyFq12) -> PyResult<()> {
         self.fq12.mul_assign(&other.fq12);
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -978,12 +987,12 @@ impl PyFq12 {
         Ok(())
     }
 
-    fn equals(&self, other: &Self) -> bool {
+    fn equals(&self, other: &PyFq12) -> bool {
         self.fq12 == other.fq12
     }
 
     /// Copy other into self
-    fn copy(&mut self, other: &Self) -> PyResult<()> {
+    fn copy(&mut self, other: &PyFq12) -> PyResult<()> {
         self.fq12 = other.fq12;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -994,16 +1003,105 @@ impl PyFq12 {
 }
 
 #[pyfunction]
-fn vec_sum(a: &PyList) -> PyResult<String>{
+fn vec_sum(a: &PyList, py: Python) -> PyResult<String>{
     let mut sum =  Fr::from_str("0").unwrap();
     for item in a.iter(){
-        let myfr: &PyFr = item.try_into().unwrap();
+        //let myobj  = item.to_object(py);
+        //let myobj2 = myobj.as_ref(py).extract::<Py<PyFr>>();
+        //let myfr: &PyFr = myobj2.as_ref(py).unwrap();
+        //let myfr: &PyFr = item.try_into().unwrap();
+        //let myfr: &PyFr = item.downcast()?;
+        //let myfr = PyFr::extract(item)?;
+        //let myfr = &PyFr::try_from(item)?;
+        //let myfr = item.cast_as::<PyFr>()?;
+        let itemcel: &PyCell<PyFr> = item.downcast()?;
+        let myfr: &PyFr = &itemcel.borrow();
         sum.add_assign(&myfr.fr);
     }
     Ok(format!("{}",sum))
 }
 
-#[pymodinit]
+#[pyfunction]
+fn hashfrs(a: &PyList) -> PyResult<String>{
+    let mut string =  String::from("");
+    for item in a.iter(){
+        //let myfr = item.into::<PyFr>().unwrap();
+        let itemcel: &PyCell<PyFr> = item.downcast()?;
+        let myfr: &PyFr = &itemcel.borrow();
+        string.push_str(&myfr.__str__().unwrap())
+    }
+    let bytes = string.into_bytes();
+    let mut hasher = Sha256::new();
+    hasher.input(bytes);
+    let result = hasher.result();
+    let text = hex::encode(&result[..]);
+    Ok(format!("{}",text))
+}
+
+#[pyfunction]
+fn hashg1s(a: &PyList) -> PyResult<String>{
+    //let mut string =  String::from("");
+    let mut vec = Vec::new();
+    let mut hasher = Sha256::new();
+    for item in a.iter(){
+        //let myg1: &PyG1 = item.try_into().unwrap();
+        let itemcel: &PyCell<PyG1> = item.downcast()?;
+        let myg1: &PyG1 = &itemcel.borrow();
+        let fqrx = FqRepr::from(myg1.g1.into_affine().x);
+        let arr = fqrx.as_ref();
+        vec.extend_from_slice(&arr);
+        //let arr: [u64; 32] = &myg1.g1.x.try_into().unwrap();
+    }
+    for num in &vec {
+        hasher.input(num.to_be_bytes());
+    }
+    //hasher.input(bytes);
+    let result = hasher.result();
+    let text = hex::encode(&result[..]);
+    Ok(format!("{}",text))
+}
+
+#[pyfunction]
+fn dotprod(output: &mut PyFr, a: &PyList, b: &PyList) -> PyResult<()>{
+    output.fr.clone_from(&Fr::zero());
+    let mut temp = Fr::zero();
+    for (ai, bi) in a.iter().zip(b){
+        //let aif: &PyFr = ai.try_into().unwrap();
+        //let bif: &PyFr = bi.try_into().unwrap();
+        let aicel: &PyCell<PyFr> = ai.downcast()?;
+        let aif: &PyFr = &aicel.borrow();
+        let bicel: &PyCell<PyFr> = bi.downcast()?;
+        let bif: &PyFr = &bicel.borrow();
+        temp.clone_from(&aif.fr);
+        temp.mul_assign(&bif.fr);
+        output.fr.add_assign(&temp);
+    }
+    Ok(())
+}
+
+#[pyfunction]
+fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p PyList> {
+    let l: &PyList = PyList::empty(py);
+    //let weed = PyFr{
+    //    fr: Fr::one(),
+    //};
+    let mut items: Vec<&PyCell<PyFr>> = Vec::new();
+    for item in inlist.iter(){
+        let aicel: &PyCell<PyFr> = item.downcast()?;
+        let aif: &PyFr = &aicel.borrow();
+        let mut weed = PyFr{
+            fr: Fr::one(),
+        };
+        weed.fr.clone_from(&aif.fr);
+        items.push(PyCell::new(py, weed).unwrap());
+        //l.append::<PyFr>(aif.into_py(py));
+        //inlist.set_item(1, aif);
+    }
+    //l.append(weed.into_py(py));
+    Ok(PyList::new(py, items))
+}
+
+#[pymodule]
 fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyG1>()?;
     m.add_class::<PyG2>()?;
@@ -1013,9 +1111,13 @@ fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFq6>()?;
     m.add_class::<PyFq12>()?;
     m.add_class::<PyFr>()?;
-    m.add_function(wrap_function!(py_pairing)).unwrap();
-    //m.add_function(wrap_function!(vec_sum))?;
-    m.add_function(wrap_function!(vec_sum)).unwrap();
+    m.add_wrapped(wrap_pyfunction!(py_pairing))?;
+    //m.add_function(wrap_pyfunction!(vec_sum))?;
+    m.add_wrapped(wrap_pyfunction!(vec_sum))?;
+    m.add_wrapped(wrap_pyfunction!(hashfrs))?;
+    m.add_wrapped(wrap_pyfunction!(hashg1s))?;
+    m.add_wrapped(wrap_pyfunction!(dotprod))?;
+    m.add_wrapped(wrap_pyfunction!(condense_list))?;
     Ok(())
 }
 
