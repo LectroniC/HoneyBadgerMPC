@@ -70,7 +70,8 @@ async def test_hbavss_loglin(test_router):
 
     g, h, pks, sks = get_avss_params(n, t)
     sends, recvs, _ = test_router(n)
-    crs = gen_pc_const_crs(t, g=g, h=h)
+    # TODO: add configurable crs specifically for poly_commit_log
+    crs = [g]
 
     values = [ZR.random()] * (t + 1)
     avss_tasks = [None] * n
@@ -474,6 +475,87 @@ async def test_hbavss_batch_share_fault(test_router):
                 hbavss = BadDealer(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             else:
                 hbavss = HbAvssBatch(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss_list.append(hbavss)
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        outputs = await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        shares = [output[2] for output in outputs]
+        for task in avss_tasks:
+            task.cancel()
+    fliped_shares = list(map(list, zip(*shares)))
+    recovered_values = []
+    for item in fliped_shares:
+        recovered_values.append(
+            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
+        )
+
+    assert recovered_values == values
+
+@mark.asyncio
+async def test_hbavss_batch_loglin_share_fault(test_router):
+    # Injects one invalid share
+    class BadDealer(HbAvssBatchLoglin):
+        def _get_dealer_msg(self, values, n, batch_size):
+            # Sample B random degree-(t) polynomials of form φ(·)
+            # such that each φ_i(0) = si and φ_i(j) is Pj’s share of si
+            # The same as B (batch_size)
+            fault_n = randint(1, n - 1)
+            fault_k = randint(1, len(values) - 1)
+            while len(values) % (batch_size) != 0:
+                values.append(0)
+            secret_count = len(values)
+            phi = [None] * secret_count
+            commitments = [None] * secret_count
+            # BatchPolyCommit
+            #   Cs  <- BatchPolyCommit(SP,φ(·,k))
+            # TODO: Whether we should keep track of that or not
+            r = ZR.random()
+            for k in range(secret_count):
+                phi[k] = self.poly.random(self.t, values[k])
+                commitments[k] = self.poly_commit.commit(phi[k], r)
+
+            ephemeral_secret_key = self.field.random()
+            ephemeral_public_key = pow(self.g, ephemeral_secret_key)
+            dispersal_msg_list = [None] * n
+            witnesses = self.poly_commit.double_batch_create_witness(phi, r)
+            for i in range(n):
+                shared_key = pow(self.public_keys[i], ephemeral_secret_key)
+                z = [None] * secret_count
+                for k in range(secret_count):
+                    if i == fault_n and k == fault_k:
+                        z[k] = (ZR.random(), witnesses[k][i])
+                    else:
+                        z[k] = (phi[k](i + 1), witnesses[k][i])
+                zz = SymmetricCrypto.encrypt(str(shared_key).encode(), z)
+                dispersal_msg_list[i] = zz
+
+            return dumps((commitments, ephemeral_public_key)), dispersal_msg_list
+
+    t = 2
+    n = 3 * t + 1
+
+    g, h, pks, sks = get_avss_params(n, t)
+    sends, recvs, _ = test_router(n)
+    # TODO: add configurable crs specifically for poly_commit_log
+    crs = [g]
+
+    values = [ZR.random()] * (t + 1)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+
+    with ExitStack() as stack:
+        hbavss_list = []
+        for i in range(n):
+            if i == dealer_id:
+                hbavss = BadDealer(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            else:
+                hbavss = HbAvssBatchLoglin(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             hbavss_list.append(hbavss)
             stack.enter_context(hbavss)
             if i == dealer_id:
