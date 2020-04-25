@@ -17,7 +17,21 @@ extern crate pyo3;
 
 use pyo3::prelude::*;
 use pyo3::types::PyList;
+use pyo3::types::PyBool;
+use pyo3::PyNumberProtocol;
+//mod number;
+//use self::number::PyNumberProtocol;
+use pyo3::PyObjectProtocol;
 use std::convert::TryFrom;
+use std::convert::TryInto;
+
+extern crate num_bigint;
+use num_bigint::{BigInt, Sign};
+
+extern crate num_traits;
+use num_traits::cast::ToPrimitive;
+use num_traits::Pow;
+use num_traits::Num;
 
 extern crate byteorder;
 #[macro_use]
@@ -30,7 +44,7 @@ extern crate hex;
 pub mod tests;
 
 pub mod bls12_381;
-use bls12_381::{G1, G2, Fr, Fq, Fq2, Fq6, Fq12, FqRepr, FrRepr};
+use bls12_381::{G1, G1Affine, G2, Fr, Fq, Fq2, Fq6, Fq12, FqRepr, FrRepr};
 mod wnaf;
 pub use self::wnaf::Wnaf;
 
@@ -163,7 +177,8 @@ fn py_pairing(g1: &PyG1, g2: &PyG2) -> PyResult<()> {
     Ok(())
 }
 
-#[pyclass]
+#[pyclass(module = "pypairing")]
+#[derive(Clone)]
 struct PyG1 {
    g1 : G1,
    pp : Vec<G1>,
@@ -286,6 +301,7 @@ impl PyG1 {
         }
         Ok(())
     }
+    
 
     fn sub_assign(&mut self, other: &PyG1) -> PyResult<()> {
         self.g1.sub_assign(&other.g1);
@@ -331,6 +347,45 @@ impl PyG1 {
         let aff = self.g1.into_affine();
         Ok(format!("({}, {})",aff.x, aff.y))
         //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
+    }
+    
+    //Serialize into affine coordinates so that equal points serialize the same
+    pub fn __getstate__<'p>(&self, py: Python<'p>) -> PyResult<&'p PyList> {
+        let aff = self.g1.into_affine();
+        let fqx = FqRepr::from(aff.x);
+        let fqy = FqRepr::from(aff.y);
+        let arr1: &[u64] = fqx.as_ref();
+        let arr2: &[u64] = fqy.as_ref();
+        let arr = [arr1, arr2].concat();
+        Ok(PyList::new(py, arr))
+    }
+    
+    pub fn __setstate__(&mut self, list: &PyAny) -> PyResult<()>
+    {
+        let arr: [u64; 12] = list.extract()?;
+        let fqxr = FqRepr(arr[0..6].try_into().expect("invalid initialization"));
+        let fqyr = FqRepr(arr[6..].try_into().expect("invalid initialization"));
+        let fqx = Fq::from_repr(fqxr).unwrap();
+        let fqy = Fq::from_repr(fqyr).unwrap();
+        let ga = G1Affine {
+            x: fqx,
+            y: fqy,
+            infinity: false
+        };
+        self.g1 = ga.into_projective();
+        //Hope you didn't need to be able to serialize the infinity point. If you do, please make a PR :)
+        Ok(())
+    }
+    
+    fn __eq__<'p>(&self, other: &PyAny, py: Python<'p>) -> PyResult<&'p PyBool> {
+        let othercel = &other.downcast::<PyCell<PyG1>>();
+        if othercel.is_err(){
+            Ok(PyBool::new(py, false))
+        }
+        else{
+            let otherg1: &PyG1 = &othercel.as_ref().unwrap().borrow();
+            Ok(PyBool::new(py, self.g1 == otherg1.g1))
+        }
     }
 
     //Creates preprocessing elements to allow fast scalar multiplication.
@@ -392,6 +447,56 @@ impl PyG1 {
             }
         }
         Ok(())
+    }
+}
+
+#[pyproto]
+impl PyNumberProtocol for PyG1 {
+    fn __mul__(lhs: PyG1, rhs: PyG1) -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        out.g1.clone_from(&lhs.g1);
+        out.g1.add_assign(&rhs.g1);
+        Ok(out)
+    }
+    fn __imul__(&mut self, other: PyG1) -> PyResult<()> {
+        self.add_assign(&other);
+        Ok(())
+    }
+    fn __pow__(lhs: PyG1, rhs: &PyAny, mod_: Option<&'p PyAny>)  -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let exp: BigInt = rhs.extract()?;
+            let pyfrexp = bigint_to_pyfr(&exp);
+            lhs.ppmul(&pyfrexp, &mut out).unwrap();
+        }
+        else {
+            //let rhscel2 = rhscel.as_ref().unwrap();
+            let exp: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            lhs.ppmul(&exp, &mut out).unwrap();
+        }
+        Ok(out)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyG1 {
+    fn __str__(&self) -> PyResult<String> {
+        let aff = self.g1.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+    }
+    fn __repr__(&self) -> PyResult<String> {
+        let aff = self.g1.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+        //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
     }
 }
 
@@ -614,7 +719,9 @@ impl PyG2 {
 
 }
 
-#[pyclass]
+//#[pyclass]
+#[pyclass(module = "pypairing")]
+#[derive(Clone)]
 struct PyFr {
    fr : Fr
 }
@@ -623,10 +730,14 @@ struct PyFr {
 impl PyFr {
 
     #[new]
-    fn new(s1: u64, s2: u64, s3: u64, s4: u64) -> Self {
-        let f = Fr::from_repr(FrRepr([s1,s2,s3,s4])).unwrap();
-        PyFr{
-            fr: f,
+    fn new(s1: Option<u64>, s2: Option<u64>, s3: Option<u64>, s4: Option<u64>) -> Self {
+        //let f = Fr::from_repr(FrRepr([s1,s2,s3,s4])).unwrap();
+        //PyFr{
+        //    fr: f,
+        //}
+        match s1 {
+            None => PyFr{fr:Fr::one()},
+            Some(s1) => PyFr{fr: Fr::from_repr(FrRepr([s1,s2.unwrap(),s3.unwrap(),s4.unwrap()])).unwrap()}
         }
     }
     
@@ -699,7 +810,58 @@ impl PyFr {
     pub fn __str__(&self) -> PyResult<String> {
         Ok(format!("{}",self.fr))
     }
+    
+    pub fn __getstate__<'p>(&self, py: Python<'p>) -> PyResult<&'p PyList> {
+        let frrep = FrRepr::from(self.fr);
+        let arr: &[u64] = frrep.as_ref();
+        Ok(PyList::new(py, arr))
+    }
+    
+    pub fn __setstate__(&mut self, list: &PyAny) -> PyResult<()>
+    {
+        let arr: [u64; 4] = list.extract()?;
+        let myfr = Fr::from_repr(FrRepr(arr)).unwrap();
+        self.fr = myfr;
+        Ok(())
+    }
 
+}
+
+#[pyproto]
+impl PyNumberProtocol for PyFr {
+    fn __mul__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let prodend: BigInt = rhs.extract()?;
+            let pyfrprodend = bigint_to_pyfr(&prodend);
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        else{
+            let pyfrprodend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        Ok(out)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyFr {
+    fn __str__(&self) -> PyResult<String> {
+        //let hex = self.fr.to_string();
+        //let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
+        //Ok(bi.to_str_radix(10))
+        Ok(format!("{}",self.fr))
+    }
+    fn __repr__(&self) -> PyResult<String> {
+        //Ok(format!("{}",self.fr))
+        let hex = self.fr.to_string();
+        let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
+        Ok(bi.to_str_radix(10))
+    }
 }
 
 #[pyclass]
@@ -1101,6 +1263,28 @@ fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p 
     Ok(PyList::new(py, items))
 }
 
+fn bigint_to_pyfr(bint: &BigInt) -> PyFr {//Result<PyFr, Box<dyn Error>> {
+    let bls12_381_r = BigInt::new(Sign::Plus, vec![1u32,4294967295u32,4294859774u32,1404937218u32,161601541u32,859428872u32,698187080u32,1944954707u32]);
+    let mut uint = bint % &bls12_381_r;
+    // The % in rust is not modulo, it's remainder!
+    if uint < BigInt::from(0u8) {
+        uint += &bls12_381_r;
+    }
+    //BigInts only serialize/deserialize into Vec<u32>, while Fr only works with Vec<u64>
+    //They are not cross compatible ヽ(ಠ_ಠ)ノ
+    let s1 = &uint % 2u128.pow(64);
+    //let s2 = (&uint / (2u128.pow(64))) % 2u128.pow(64);
+    //let s3: BigInt = (&uint / (BigInt::from(2u8).pow(128u8))) % 2u128.pow(64);
+    //let s4: BigInt = &uint / (BigInt::from(2u8).pow(192u8));
+    let s2 = (&uint >> 64) % 2u128.pow(64);
+    let s3: BigInt = (&uint >> 128) % 2u128.pow(64);
+    let s4: BigInt = &uint >> 192;
+    let myfr = Fr::from_repr(FrRepr([s1.to_u64().unwrap(),s2.to_u64().unwrap(),s3.to_u64().unwrap(),s4.to_u64().unwrap()])).unwrap();
+    let mypyfr = PyFr{
+        fr: myfr
+    };
+    mypyfr
+}
 #[pymodule]
 fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyG1>()?;
