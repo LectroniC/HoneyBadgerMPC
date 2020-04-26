@@ -34,25 +34,30 @@ use num_traits::Pow;
 use num_traits::Num;
 
 extern crate byteorder;
-#[macro_use]
 extern crate ff;
 extern crate rand;
 extern crate sha2;
 extern crate hex;
+extern crate group;
+extern crate rand_core;
+extern crate rand_chacha;
+
+
 
 #[cfg(test)]
 pub mod tests;
 
 pub mod bls12_381;
 use bls12_381::{G1, G1Affine, G2, Fr, Fq, Fq2, Fq6, Fq12, FqRepr, FrRepr};
-mod wnaf;
-pub use self::wnaf::Wnaf;
+use group::CurveProjective;
+use group::CurveAffine;
 
 use ff::{Field,  PrimeField, PrimeFieldDecodingError, PrimeFieldRepr, ScalarEngine, SqrtField};
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Write};
-use rand::{Rand, Rng, SeedableRng, XorShiftRng, ChaChaRng};
+use rand_chacha::ChaCha20Rng;
+use rand_core::SeedableRng;
 use sha2::{Sha256, Sha512, Digest};
 
 
@@ -88,9 +93,9 @@ fn hex_to_bin (hexstr: &String) -> String
     out
 }
 
-/// An "engine" is a collection of types (fields, elliptic curve groups, etc.)
-/// with well-defined relationships. In particular, the G1/G2 curve groups are
-/// of prime order `r`, and are equipped with a bilinear pairing function.
+//We are currently using pairing v 0.16.0. The code is copied here rather than imported so that
+//some private struct fields can be manipulated.
+//*************** BEGIN CODE BORROWED FROM PAIRING CRATE **************
 pub trait Engine: ScalarEngine {
     /// The projective representation of an element in G1.
     type G1: CurveProjective<
@@ -98,19 +103,17 @@ pub trait Engine: ScalarEngine {
             Base = Self::Fq,
             Scalar = Self::Fr,
             Affine = Self::G1Affine,
-        >
-        + From<Self::G1Affine>;
+        > + From<Self::G1Affine>;
 
     /// The affine representation of an element in G1.
-    type G1Affine: CurveAffine<
+    type G1Affine: PairingCurveAffine<
             Engine = Self,
             Base = Self::Fq,
             Scalar = Self::Fr,
             Projective = Self::G1,
             Pair = Self::G2Affine,
             PairingResult = Self::Fqk,
-        >
-        + From<Self::G1>;
+        > + From<Self::G1>;
 
     /// The projective representation of an element in G2.
     type G2: CurveProjective<
@@ -118,19 +121,17 @@ pub trait Engine: ScalarEngine {
             Base = Self::Fqe,
             Scalar = Self::Fr,
             Affine = Self::G2Affine,
-        >
-        + From<Self::G2Affine>;
+        > + From<Self::G2Affine>;
 
     /// The affine representation of an element in G2.
-    type G2Affine: CurveAffine<
+    type G2Affine: PairingCurveAffine<
             Engine = Self,
             Base = Self::Fqe,
             Scalar = Self::Fr,
             Projective = Self::G2,
             Pair = Self::G1Affine,
             PairingResult = Self::Fqk,
-        >
-        + From<Self::G2>;
+        > + From<Self::G2>;
 
     /// The base field that hosts G1.
     type Fq: PrimeField + SqrtField;
@@ -146,13 +147,13 @@ pub trait Engine: ScalarEngine {
     where
         I: IntoIterator<
             Item = &'a (
-                &'a <Self::G1Affine as CurveAffine>::Prepared,
-                &'a <Self::G2Affine as CurveAffine>::Prepared,
+                &'a <Self::G1Affine as PairingCurveAffine>::Prepared,
+                &'a <Self::G2Affine as PairingCurveAffine>::Prepared,
             ),
         >;
 
     /// Perform final exponentiation of the result of a miller loop.
-    fn final_exponentiation(&Self::Fqk) -> Option<Self::Fqk>;
+    fn final_exponentiation(_: &Self::Fqk) -> Option<Self::Fqk>;
 
     /// Performs a complete pairing operation `(p, q)`.
     fn pairing<G1, G2>(p: G1, q: G2) -> Self::Fqk
@@ -161,13 +162,28 @@ pub trait Engine: ScalarEngine {
         G2: Into<Self::G2Affine>,
     {
         Self::final_exponentiation(&Self::miller_loop(
-            [(&(p.into().prepare()), &(q.into().prepare()))].into_iter(),
-        )).unwrap()
+            [(&(p.into().prepare()), &(q.into().prepare()))].iter(),
+        ))
+        .unwrap()
     }
-
-
-
 }
+
+/// Affine representation of an elliptic curve point that can be used
+/// to perform pairings.
+pub trait PairingCurveAffine: CurveAffine {
+    type Prepared: Clone + Send + Sync + 'static;
+    type Pair: PairingCurveAffine<Pair = Self>;
+    type PairingResult: Field;
+
+    /// Prepares this element for pairing purposes.
+    fn prepare(&self) -> Self::Prepared;
+
+    /// Perform a pairing
+    fn pairing_with(&self, other: &Self::Pair) -> Self::PairingResult;
+}
+
+
+//*************** END CODE BORROWED FROM PAIRING CRATE **************
 
 #[pyfunction]
 fn py_pairing(g1: &PyG1, g2: &PyG2) -> PyResult<()> {
@@ -206,8 +222,8 @@ impl PyG1 {
             seed[i] = *myu32;
             i = i + 1;
         }
-        let mut rng = ChaChaRng::from_seed(&seed);
-        let g = G1::rand(&mut rng);
+        let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+        let g = G1::random(&mut rng);
         self.g1 = g;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -217,9 +233,14 @@ impl PyG1 {
     }
 
     fn load_fq_proj(&mut self, fqx: &PyFq, fqy: &PyFq, fqz: &PyFq) -> PyResult<()> {
-        self.g1.x = fqx.fq;
-        self.g1.y = fqy.fq;
-        self.g1.z = fqz.fq;
+        //self.g1.x = fqx.fq;
+        //self.g1.y = fqy.fq;
+        //self.g1.z = fqz.fq;
+        self.g1 = G1 {
+            x: fqx.fq,
+            y: fqy.fq,
+            z: fqz.fq,
+        };
         if self.pplevel != 0 {
             self.pp = Vec::new();
             self.pplevel = 0;
@@ -228,10 +249,16 @@ impl PyG1 {
     }
 
     fn load_fq_affine(&mut self, fqx: &PyFq, fqy: &PyFq) -> PyResult<()> {
-        let mut a = self.g1.into_affine();
-        a.x = fqx.fq;
-        a.y = fqy.fq;
-        self.g1 = a.into_projective();
+        //let mut a = self.g1.into_affine();
+        //a.x = fqx.fq;
+        //a.y = fqy.fq;
+        //self.g1 = a.into_projective();
+        let ga = G1Affine {
+            x: fqx.fq,
+            y: fqy.fq,
+            infinity: false
+        };
+        self.g1 = ga.into_projective();
         if self.pplevel != 0 {
             self.pp = Vec::new();
             self.pplevel = 0;
@@ -340,6 +367,7 @@ impl PyG1 {
     }
 
     pub fn projective(&self) -> PyResult<String> {
+        //Ok(format!("({}, {}, {})",self.g1.x, self.g1.y, self.g1.z))
         Ok(format!("({}, {}, {})",self.g1.x, self.g1.y, self.g1.z))
     }
 
@@ -528,8 +556,8 @@ impl PyG2 {
             seed[i] = *myu32;
             i = i + 1;
         }
-        let mut rng = ChaChaRng::from_seed(&seed);
-        let g = G2::rand(&mut rng);
+        let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+        let g = G2::random(&mut rng);
         self.g2 = g;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -963,8 +991,8 @@ impl PyFq12 {
             seed[i] = *myu32;
             i = i + 1;
         }
-        let mut rng = ChaChaRng::from_seed(&seed);
-        let g = Fq12::rand(&mut rng);
+        let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+        let g = Fq12::random(&mut rng);
         self.fq12 = g;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -1285,6 +1313,19 @@ fn bigint_to_pyfr(bint: &BigInt) -> PyFr {//Result<PyFr, Box<dyn Error>> {
     };
     mypyfr
 }
+
+fn swap_seed_format(inarr: [u32;8]) -> [u8;32] {
+    let mut out: [u8;32] = [0; 32];
+    for i in 0..8 {
+        let next_four = inarr[i].to_be_bytes();
+        out[4*i] = next_four[0];
+        out[4*i+1] = next_four[1];
+        out[4*i+2] = next_four[2];
+        out[4*i+3] = next_four[3];
+    }
+    out
+}
+
 #[pymodule]
 fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyG1>()?;
@@ -1305,160 +1346,6 @@ fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-
-/// Projective representation of an elliptic curve point guaranteed to be
-/// in the correct prime order subgroup.
-pub trait CurveProjective:
-    PartialEq
-    + Eq
-    + Sized
-    + Copy
-    + Clone
-    + Send
-    + Sync
-    + fmt::Debug
-    + fmt::Display
-    + rand::Rand
-    + 'static
-{
-    type Engine: Engine<Fr = Self::Scalar>;
-    type Scalar: PrimeField + SqrtField;
-    type Base: SqrtField;
-    type Affine: CurveAffine<Projective = Self, Scalar = Self::Scalar>;
-
-    /// Returns the additive identity.
-    fn zero() -> Self;
-
-    /// Returns a fixed generator of unknown exponent.
-    fn one() -> Self;
-
-    /// Determines if this point is the point at infinity.
-    fn is_zero(&self) -> bool;
-
-    /// Normalizes a slice of projective elements so that
-    /// conversion to affine is cheap.
-    fn batch_normalization(v: &mut [Self]);
-
-    /// Checks if the point is already "normalized" so that
-    /// cheap affine conversion is possible.
-    fn is_normalized(&self) -> bool;
-
-    /// Doubles this element.
-    fn double(&mut self);
-
-    /// Adds another element to this element.
-    fn add_assign(&mut self, other: &Self);
-
-    /// Subtracts another element from this element.
-    fn sub_assign(&mut self, other: &Self) {
-        let mut tmp = *other;
-        tmp.negate();
-        self.add_assign(&tmp);
-    }
-
-    /// Adds an affine element to this element.
-    fn add_assign_mixed(&mut self, other: &Self::Affine);
-
-    /// Negates this element.
-    fn negate(&mut self);
-
-    /// Performs scalar multiplication of this element.
-    fn mul_assign<S: Into<<Self::Scalar as PrimeField>::Repr>>(&mut self, other: S);
-
-    /// Converts this element into its affine representation.
-    fn into_affine(&self) -> Self::Affine;
-
-    /// Recommends a wNAF window table size given a scalar. Always returns a number
-    /// between 2 and 22, inclusive.
-    fn recommended_wnaf_for_scalar(scalar: <Self::Scalar as PrimeField>::Repr) -> usize;
-
-    /// Recommends a wNAF window size given the number of scalars you intend to multiply
-    /// a base by. Always returns a number between 2 and 22, inclusive.
-    fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize;
-}
-
-/// Affine representation of an elliptic curve point guaranteed to be
-/// in the correct prime order subgroup.
-pub trait CurveAffine:
-    Copy + Clone + Sized + Send + Sync + fmt::Debug + fmt::Display + PartialEq + Eq + 'static
-{
-    type Engine: Engine<Fr = Self::Scalar>;
-    type Scalar: PrimeField + SqrtField;
-    type Base: SqrtField;
-    type Projective: CurveProjective<Affine = Self, Scalar = Self::Scalar>;
-    type Prepared: Clone + Send + Sync + 'static;
-    type Uncompressed: EncodedPoint<Affine = Self>;
-    type Compressed: EncodedPoint<Affine = Self>;
-    type Pair: CurveAffine<Pair = Self>;
-    type PairingResult: Field;
-
-    /// Returns the additive identity.
-    fn zero() -> Self;
-
-    /// Returns a fixed generator of unknown exponent.
-    fn one() -> Self;
-
-    /// Determines if this point represents the point at infinity; the
-    /// additive identity.
-    fn is_zero(&self) -> bool;
-
-    /// Negates this element.
-    fn negate(&mut self);
-
-    /// Performs scalar multiplication of this element with mixed addition.
-    fn mul<S: Into<<Self::Scalar as PrimeField>::Repr>>(&self, other: S) -> Self::Projective;
-
-    /// Prepares this element for pairing purposes.
-    fn prepare(&self) -> Self::Prepared;
-
-    /// Perform a pairing
-    fn pairing_with(&self, other: &Self::Pair) -> Self::PairingResult;
-
-    /// Converts this element into its affine representation.
-    fn into_projective(&self) -> Self::Projective;
-
-    /// Converts this element into its compressed encoding, so long as it's not
-    /// the point at infinity.
-    fn into_compressed(&self) -> Self::Compressed {
-        <Self::Compressed as EncodedPoint>::from_affine(*self)
-    }
-
-    /// Converts this element into its uncompressed encoding, so long as it's not
-    /// the point at infinity.
-    fn into_uncompressed(&self) -> Self::Uncompressed {
-        <Self::Uncompressed as EncodedPoint>::from_affine(*self)
-    }
-}
-
-/// An encoded elliptic curve point, which should essentially wrap a `[u8; N]`.
-pub trait EncodedPoint:
-    Sized + Send + Sync + AsRef<[u8]> + AsMut<[u8]> + Clone + Copy + 'static
-{
-    type Affine: CurveAffine;
-
-    /// Creates an empty representation.
-    fn empty() -> Self;
-
-    /// Returns the number of bytes consumed by this representation.
-    fn size() -> usize;
-
-    /// Converts an `EncodedPoint` into a `CurveAffine` element,
-    /// if the encoding represents a valid element.
-    fn into_affine(&self) -> Result<Self::Affine, GroupDecodingError>;
-
-    /// Converts an `EncodedPoint` into a `CurveAffine` element,
-    /// without guaranteeing that the encoding represents a valid
-    /// element. This is useful when the caller knows the encoding is
-    /// valid already.
-    ///
-    /// If the encoding is invalid, this can break API invariants,
-    /// so caution is strongly encouraged.
-    fn into_affine_unchecked(&self) -> Result<Self::Affine, GroupDecodingError>;
-
-    /// Creates an `EncodedPoint` from an affine point, as long as the
-    /// point is not the point at infinity.
-    fn from_affine(affine: Self::Affine) -> Self;
-}
 
 /// An error that may occur when trying to decode an `EncodedPoint`.
 #[derive(Debug)]

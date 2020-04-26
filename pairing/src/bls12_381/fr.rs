@@ -6,7 +6,9 @@ use ff::{Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr};
 pub struct Fr(FrRepr);
 
 #[cfg(test)]
-use rand::{Rand, SeedableRng, XorShiftRng};
+use rand_core::SeedableRng;
+#[cfg(test)]
+use rand_xorshift::XorShiftRng;
 
 #[test]
 fn test_fr_repr_ordering() {
@@ -197,7 +199,10 @@ fn test_fr_repr_num_bits() {
 
 #[test]
 fn test_fr_repr_sub_noborrow() {
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     let mut t = FrRepr([
         0x8e62a7e85264e2c3,
@@ -221,7 +226,7 @@ fn test_fr_repr_sub_noborrow() {
     );
 
     for _ in 0..1000 {
-        let mut a = FrRepr::rand(&mut rng);
+        let mut a = Fr::random(&mut rng).into_repr();
         a.0[3] >>= 30;
         let mut b = a;
         for _ in 0..10 {
@@ -296,7 +301,10 @@ fn test_fr_legendre() {
 
 #[test]
 fn test_fr_repr_add_nocarry() {
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     let mut t = FrRepr([
         0xd64f669809cbc6a4,
@@ -322,9 +330,9 @@ fn test_fr_repr_add_nocarry() {
 
     // Test for the associativity of addition.
     for _ in 0..1000 {
-        let mut a = FrRepr::rand(&mut rng);
-        let mut b = FrRepr::rand(&mut rng);
-        let mut c = FrRepr::rand(&mut rng);
+        let mut a = Fr::random(&mut rng).into_repr();
+        let mut b = Fr::random(&mut rng).into_repr();
+        let mut c = Fr::random(&mut rng).into_repr();
 
         // Unset the first few bits, so that overflow won't occur.
         a.0[3] >>= 3;
@@ -380,27 +388,28 @@ fn test_fr_is_valid() {
     a.0.sub_noborrow(&FrRepr::from(1));
     assert!(a.is_valid());
     assert!(Fr(FrRepr::from(0)).is_valid());
-    assert!(
-        Fr(FrRepr([
-            0xffffffff00000000,
-            0x53bda402fffe5bfe,
-            0x3339d80809a1d805,
-            0x73eda753299d7d48
-        ])).is_valid()
-    );
-    assert!(
-        !Fr(FrRepr([
-            0xffffffffffffffff,
-            0xffffffffffffffff,
-            0xffffffffffffffff,
-            0xffffffffffffffff
-        ])).is_valid()
-    );
+    assert!(Fr(FrRepr([
+        0xffffffff00000000,
+        0x53bda402fffe5bfe,
+        0x3339d80809a1d805,
+        0x73eda753299d7d48
+    ]))
+    .is_valid());
+    assert!(!Fr(FrRepr([
+        0xffffffffffffffff,
+        0xffffffffffffffff,
+        0xffffffffffffffff,
+        0xffffffffffffffff
+    ]))
+    .is_valid());
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000 {
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
         assert!(a.is_valid());
     }
 }
@@ -492,13 +501,16 @@ fn test_fr_add_assign() {
 
     // Test associativity
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000 {
         // Generate a, b, c and ensure (a + b) + c == a + (b + c).
-        let a = Fr::rand(&mut rng);
-        let b = Fr::rand(&mut rng);
-        let c = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
+        let b = Fr::random(&mut rng);
+        let c = Fr::random(&mut rng);
 
         let mut tmp1 = a;
         tmp1.add_assign(&b);
@@ -586,12 +598,15 @@ fn test_fr_sub_assign() {
         );
     }
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000 {
         // Ensure that (a - b) + (b - a) = 0.
-        let a = Fr::rand(&mut rng);
-        let b = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
+        let b = Fr::random(&mut rng);
 
         let mut tmp1 = a;
         tmp1.sub_assign(&b);
@@ -627,13 +642,16 @@ fn test_fr_mul_assign() {
         ]))
     );
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000000 {
         // Ensure that (a * b) * c = a * (b * c)
-        let a = Fr::rand(&mut rng);
-        let b = Fr::rand(&mut rng);
-        let c = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
+        let b = Fr::random(&mut rng);
+        let c = Fr::random(&mut rng);
 
         let mut tmp1 = a;
         tmp1.mul_assign(&b);
@@ -649,10 +667,10 @@ fn test_fr_mul_assign() {
     for _ in 0..1000000 {
         // Ensure that r * (a + b + c) = r*a + r*b + r*c
 
-        let r = Fr::rand(&mut rng);
-        let mut a = Fr::rand(&mut rng);
-        let mut b = Fr::rand(&mut rng);
-        let mut c = Fr::rand(&mut rng);
+        let r = Fr::random(&mut rng);
+        let mut a = Fr::random(&mut rng);
+        let mut b = Fr::random(&mut rng);
+        let mut c = Fr::random(&mut rng);
 
         let mut tmp1 = a;
         tmp1.add_assign(&b);
@@ -687,14 +705,18 @@ fn test_fr_squaring() {
             0xb79a310579e76ec2,
             0xac1da8d0a9af4e5f,
             0x13f629c49bf23e97
-        ])).unwrap()
+        ]))
+        .unwrap()
     );
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000000 {
         // Ensure that (a * a) = a^2
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
 
         let mut tmp = a;
         tmp.square();
@@ -710,13 +732,16 @@ fn test_fr_squaring() {
 fn test_fr_inverse() {
     assert!(Fr::zero().inverse().is_none());
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     let one = Fr::one();
 
     for _ in 0..1000 {
         // Ensure that a * a^-1 = 1
-        let mut a = Fr::rand(&mut rng);
+        let mut a = Fr::random(&mut rng);
         let ainv = a.inverse().unwrap();
         a.mul_assign(&ainv);
         assert_eq!(a, one);
@@ -725,11 +750,14 @@ fn test_fr_inverse() {
 
 #[test]
 fn test_fr_double() {
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000 {
         // Ensure doubling a is equivalent to adding a to itself.
-        let mut a = Fr::rand(&mut rng);
+        let mut a = Fr::random(&mut rng);
         let mut b = a;
         b.add_assign(&a);
         a.double();
@@ -746,11 +774,14 @@ fn test_fr_negate() {
         assert!(a.is_zero());
     }
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000 {
         // Ensure (a - (-a)) = 0.
-        let mut a = Fr::rand(&mut rng);
+        let mut a = Fr::random(&mut rng);
         let mut b = a;
         b.negate();
         a.add_assign(&b);
@@ -761,12 +792,15 @@ fn test_fr_negate() {
 
 #[test]
 fn test_fr_pow() {
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for i in 0..1000 {
         // Exponentiate by various small numbers and ensure it consists with repeated
         // multiplication.
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
         let target = a.pow(&[i]);
         let mut c = Fr::one();
         for _ in 0..i {
@@ -777,7 +811,7 @@ fn test_fr_pow() {
 
     for _ in 0..1000 {
         // Exponentiating by the modulus should have no effect in a prime field.
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
 
         assert_eq!(a, a.pow(Fr::char()));
     }
@@ -787,13 +821,16 @@ fn test_fr_pow() {
 fn test_fr_sqrt() {
     use ff::SqrtField;
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     assert_eq!(Fr::zero().sqrt().unwrap(), Fr::zero());
 
     for _ in 0..1000 {
         // Ensure sqrt(a^2) = a or -a
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
         let mut nega = a;
         nega.negate();
         let mut b = a;
@@ -806,7 +843,7 @@ fn test_fr_sqrt() {
 
     for _ in 0..1000 {
         // Ensure sqrt(a)^2 = a for random a
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
 
         if let Some(mut tmp) = a.sqrt() {
             tmp.square();
@@ -819,14 +856,13 @@ fn test_fr_sqrt() {
 #[test]
 fn test_fr_from_into_repr() {
     // r + 1 should not be in the field
-    assert!(
-        Fr::from_repr(FrRepr([
-            0xffffffff00000002,
-            0x53bda402fffe5bfe,
-            0x3339d80809a1d805,
-            0x73eda753299d7d48
-        ])).is_err()
-    );
+    assert!(Fr::from_repr(FrRepr([
+        0xffffffff00000002,
+        0x53bda402fffe5bfe,
+        0x3339d80809a1d805,
+        0x73eda753299d7d48
+    ]))
+    .is_err());
 
     // r should not be in the field
     assert!(Fr::from_repr(Fr::char()).is_err());
@@ -858,11 +894,14 @@ fn test_fr_from_into_repr() {
     // Zero should be in the field.
     assert!(Fr::from_repr(FrRepr::from(0)).unwrap().is_zero());
 
-    let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
 
     for _ in 0..1000 {
         // Try to turn Fr elements into representations and back again, and compare.
-        let a = Fr::rand(&mut rng);
+        let a = Fr::random(&mut rng);
         let a_repr = a.into_repr();
         let b_repr = FrRepr::from(a);
         assert_eq!(a_repr, b_repr);
@@ -926,7 +965,8 @@ fn test_fr_display() {
                 0x185ec8eb3f5b5aee,
                 0x684499ffe4b9dd99,
                 0x7c9bba7afb68faa
-            ])).unwrap()
+            ]))
+            .unwrap()
         ),
         "Fr(0x07c9bba7afb68faa684499ffe4b9dd99185ec8eb3f5b5aeec3cae746a3b5ecc7)".to_string()
     );
@@ -938,7 +978,8 @@ fn test_fr_display() {
                 0xb0ad10817df79b6a,
                 0xd034a80a2b74132b,
                 0x41cf9a1336f50719
-            ])).unwrap()
+            ]))
+            .unwrap()
         ),
         "Fr(0x41cf9a1336f50719d034a80a2b74132bb0ad10817df79b6a44c71298ff198106)".to_string()
     );
@@ -974,13 +1015,13 @@ fn test_fr_root_of_unity() {
 
 #[test]
 fn fr_field_tests() {
-    ::tests::field::random_field_tests::<Fr>();
-    ::tests::field::random_sqrt_tests::<Fr>();
-    ::tests::field::random_frobenius_tests::<Fr, _>(Fr::char(), 13);
-    ::tests::field::from_str_tests::<Fr>();
+    crate::tests::field::random_field_tests::<Fr>();
+    crate::tests::field::random_sqrt_tests::<Fr>();
+    crate::tests::field::random_frobenius_tests::<Fr, _>(Fr::char(), 13);
+    crate::tests::field::from_str_tests::<Fr>();
 }
 
 #[test]
 fn fr_repr_tests() {
-    ::tests::repr::random_repr_tests::<FrRepr>();
+    crate::tests::repr::random_repr_tests::<Fr>();
 }

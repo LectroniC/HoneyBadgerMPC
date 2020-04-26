@@ -1,3 +1,6 @@
+//! An implementation of the BLS12-381 pairing-friendly elliptic curve
+//! construction.
+
 mod ec;
 mod fq;
 mod fq12;
@@ -9,8 +12,8 @@ mod fr;
 mod tests;
 
 pub use self::ec::{
-    G1, G1Affine, G1Compressed, G1Prepared, G1Uncompressed, G2, G2Affine, G2Compressed, G2Prepared,
-    G2Uncompressed,
+    G1Affine, G1Compressed, G1Prepared, G1Uncompressed, G2Affine, G2Compressed, G2Prepared,
+    G2Uncompressed, G1, G2,
 };
 pub use self::fq::{Fq, FqRepr};
 pub use self::fq12::Fq12;
@@ -18,9 +21,10 @@ pub use self::fq2::Fq2;
 pub use self::fq6::Fq6;
 pub use self::fr::{Fr, FrRepr};
 
-use super::{CurveAffine, Engine};
+use super::{Engine, PairingCurveAffine};
 
 use ff::{BitIterator, Field, ScalarEngine};
+use group::CurveAffine;
 
 // The BLS parameter x for BLS12-381 is -0xd201000000010000
 const BLS_X: u64 = 0xd201000000010000;
@@ -46,8 +50,8 @@ impl Engine for Bls12 {
     where
         I: IntoIterator<
             Item = &'a (
-                &'a <Self::G1Affine as CurveAffine>::Prepared,
-                &'a <Self::G2Affine as CurveAffine>::Prepared,
+                &'a <Self::G1Affine as PairingCurveAffine>::Prepared,
+                &'a <Self::G2Affine as PairingCurveAffine>::Prepared,
             ),
         >,
     {
@@ -365,5 +369,5 @@ impl G2Prepared {
 
 #[test]
 fn bls12_engine_tests() {
-    ::tests::engine::engine_tests::<Bls12>();
+    crate::tests::engine::engine_tests::<Bls12>();
 }
