@@ -201,6 +201,10 @@ class G1:
         one = G1()
         one.pyg1.zero()
         return one
+    
+    @staticmethod
+    def identity():
+        return G1.one()
 
     @staticmethod
     def rand(seed=None):
@@ -209,11 +213,11 @@ class G1:
             seed = []
             for _ in range(8):
                 seed.append(random.SystemRandom().randint(0, 4294967295))
-            out.rand(seed)
+            out.randomize(seed)
         else:
             assert type(seed) is list
             assert len(seed) <= 8
-            out.rand(seed)
+            out.randomize(seed)
         return G1(out)
 
     # length determines how many G1 values to return
@@ -408,17 +412,21 @@ class G2:
         return one
 
     @staticmethod
+    def identity():
+        return G2.one()
+
+    @staticmethod
     def rand(seed=None):
         out = PyG2()
         if seed is None:
             seed = []
             for _ in range(8):
                 seed.append(random.SystemRandom().randint(0, 4294967295))
-            out.rand(seed)
+            out.randomize(seed)
         else:
             assert type(seed) is list
             assert len(seed) <= 8
-            out.rand(seed)
+            out.randomize(seed)
         return G2(out)
 
     # length determines how many G2 values to return
@@ -776,7 +784,11 @@ class ZR:
             # Generate pseudorandomly based on seed
             r = random.Random(seed).randint(0, r - 1)
             return ZR(str(r))
-
+    
+    @staticmethod
+    def rand(seed=None):
+        return ZR.random(seed)
+    
     @staticmethod
     def zero():
         return ZR(0)

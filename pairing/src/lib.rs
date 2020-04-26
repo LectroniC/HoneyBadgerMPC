@@ -19,6 +19,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 use pyo3::types::PyBool;
 use pyo3::PyNumberProtocol;
+use pyo3::basic::CompareOp;
 //mod number;
 //use self::number::PyNumberProtocol;
 use pyo3::PyObjectProtocol;
@@ -206,7 +207,7 @@ impl PyG1 {
         }
     }
 
-    fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
+    fn randomize(&mut self, a: Vec<u32>) -> PyResult<()>{
         let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
         let mut i = 0;
         for item in a.iter(){
@@ -397,17 +398,6 @@ impl PyG1 {
         Ok(())
     }
     
-    fn __eq__<'p>(&self, other: &PyAny, py: Python<'p>) -> PyResult<&'p PyBool> {
-        let othercel = &other.downcast::<PyCell<PyG1>>();
-        if othercel.is_err(){
-            Ok(PyBool::new(py, false))
-        }
-        else{
-            let otherg1: &PyG1 = &othercel.as_ref().unwrap().borrow();
-            Ok(PyBool::new(py, self.g1 == otherg1.g1))
-        }
-    }
-
     //Creates preprocessing elements to allow fast scalar multiplication.
     //Level determines extent of precomputation
     fn preprocess(&mut self, level: usize) -> PyResult<()> {
@@ -438,6 +428,7 @@ impl PyG1 {
         //It's not really Ok. This is terrible.
         Ok(())
     }
+ 
     fn ppmul(&self, prodend: &PyFr, out: &mut PyG1) -> PyResult<()>
     {
         if self.pp.len() == 0
@@ -468,6 +459,48 @@ impl PyG1 {
         }
         Ok(())
     }
+    
+    #[staticmethod]
+    fn identity() -> PyResult<PyG1> {
+        let g =  G1::zero();
+        Ok(PyG1{
+            g1: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn rand(a: Option<Vec<u32>>) -> PyResult<PyG1> {
+        match a {
+            None => {
+                let mut rng = ChaCha20Rng::from_entropy();
+                let g = G1::random(&mut rng);
+                Ok(PyG1{
+                    g1: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            },
+            Some(a) => {
+                let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
+                let mut i = 0;
+                for item in a.iter(){
+                    let myu32: &u32 = item;
+                    seed[i] = *myu32;
+                    i = i + 1;
+                }
+                let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+                let g = G1::random(&mut rng);
+                Ok(PyG1{
+                    g1: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            }
+        }
+        
+    }
 }
 
 #[pyproto]
@@ -483,7 +516,7 @@ impl PyNumberProtocol for PyG1 {
         Ok(out)
     }
     fn __imul__(&mut self, other: PyG1) -> PyResult<()> {
-        self.add_assign(&other);
+        self.add_assign(&other)?;
         Ok(())
     }
     fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
@@ -518,6 +551,26 @@ impl PyObjectProtocol for PyG1 {
         Ok(format!("({}, {})",aff.x, aff.y))
         //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
     }
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyG1 ,b: &PyAny| {
+            let othercel = &b.downcast::<PyCell<PyG1>>();
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherg1: &PyG1 = &othercel.as_ref().unwrap().borrow();
+                a.g1 == otherg1.g1
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
 }
 
 #[pyclass(module = "pypairing")]
@@ -541,7 +594,7 @@ impl PyG2 {
         }
     }
 
-    fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
+    fn randomize(&mut self, a: Vec<u32>) -> PyResult<()>{
         let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
         let mut i = 0;
         for item in a.iter(){
@@ -680,11 +733,13 @@ impl PyG2 {
     pub fn projective(&self) -> PyResult<String> {
         Ok(format!("({}, {}, {})",self.g2.x, self.g2.y, self.g2.z))
     }
+    
     pub fn __str__(&self) -> PyResult<String> {
         let aff = self.g2.into_affine();
         Ok(format!("({}, {})",aff.x, aff.y))
         //Ok(format!("({}, {})",self.g2.into_affine().x, self.g2.into_affine().y))
     }
+    
     fn preprocess(&mut self, level: usize) -> PyResult<()> {
         self.pplevel = level;
         let mut base: u64 = 2;
@@ -737,7 +792,119 @@ impl PyG2 {
         }
         Ok(())
     }
+    
+    #[staticmethod]
+    fn identity() -> PyResult<PyG2> {
+        let g =  G2::zero();
+        Ok(PyG2{
+            g2: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn rand(a: Option<Vec<u32>>) -> PyResult<PyG2> {
+        match a {
+            None => {
+                let mut rng = ChaCha20Rng::from_entropy();
+                let g = G2::random(&mut rng);
+                Ok(PyG2{
+                    g2: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            },
+            Some(a) => {
+                let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
+                let mut i = 0;
+                for item in a.iter(){
+                    let myu32: &u32 = item;
+                    seed[i] = *myu32;
+                    i = i + 1;
+                }
+                let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+                let g = G2::random(&mut rng);
+                Ok(PyG2{
+                    g2: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            }
+        }
+        
+    }
 
+}
+
+#[pyproto]
+impl PyNumberProtocol for PyG2 {
+    fn __mul__(lhs: PyG2, rhs: PyG2) -> PyResult<PyG2> {
+        let mut out = PyG2{
+            g2: G2::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        out.g2.clone_from(&lhs.g2);
+        out.g2.add_assign(&rhs.g2);
+        Ok(out)
+    }
+    fn __imul__(&mut self, other: PyG2) -> PyResult<()> {
+        self.add_assign(&other)?;
+        Ok(())
+    }
+    fn __pow__(lhs: PyG2, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG2> {
+        let mut out = PyG2{
+            g2: G2::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let exp: BigInt = rhs.extract()?;
+            let pyfrexp = bigint_to_pyfr(&exp);
+            lhs.ppmul(&pyfrexp, &mut out).unwrap();
+        }
+        else {
+            //let rhscel2 = rhscel.as_ref().unwrap();
+            let exp: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            lhs.ppmul(&exp, &mut out).unwrap();
+        }
+        Ok(out)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyG2 {
+    fn __str__(&self) -> PyResult<String> {
+        let aff = self.g2.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+    }
+    fn __repr__(&self) -> PyResult<String> {
+        let aff = self.g2.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+        //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
+    }
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyG2 ,b: &PyAny| {
+            let othercel = &b.downcast::<PyCell<PyG2>>();
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherg2: &PyG2 = &othercel.as_ref().unwrap().borrow();
+                a.g2 == otherg2.g2
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
 }
 
 //#[pyclass]
@@ -854,6 +1021,45 @@ impl PyFr {
         self.fr = myfr;
         Ok(())
     }
+    
+    fn __eq__<'p>(&self, other: &PyAny, py: Python<'p>) -> PyResult<&'p PyBool> {
+        let otherresult = pyfr_from_pyany(other);
+        if otherresult.is_err(){
+            Ok(PyBool::new(py, false))
+        }
+        else{
+            let otherfr: &PyFr = &otherresult.unwrap();
+            Ok(PyBool::new(py, self.fr == otherfr.fr))
+        }
+    }
+    
+    #[staticmethod]
+    fn rand(a: Option<Vec<u32>>) -> PyResult<PyFr> {
+        match a {
+            None => {
+                let mut rng = ChaCha20Rng::from_entropy();
+                let f = Fr::random(&mut rng);
+                Ok(PyFr{
+                    fr: f
+                })
+            },
+            Some(a) => {
+                let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
+                let mut i = 0;
+                for item in a.iter(){
+                    let myu32: &u32 = item;
+                    seed[i] = *myu32;
+                    i = i + 1;
+                }
+                let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+                let f = Fr::random(&mut rng);
+                Ok(PyFr{
+                    fr: f
+                })
+            }
+        }
+        
+    }
 
 }
 
@@ -891,6 +1097,27 @@ impl PyObjectProtocol for PyFr {
         let hex = self.fr.to_string();
         let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
         Ok(bi.to_str_radix(10))
+    }
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyFr ,b: &PyAny| {
+            let othercel = pyfr_from_pyany(b);
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherfr: &PyFr = &othercel.unwrap();
+                a.fr == otherfr.fr
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            //TODO: fix the rest of these
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
     }
 }
 
@@ -1127,6 +1354,18 @@ impl PyFq12 {
         }
         Ok(())
     }
+    
+    fn __eq__<'p>(&self, other: &PyAny, py: Python<'p>) -> PyResult<&'p PyBool> {
+        let othercel = &other.downcast::<PyCell<PyFq12>>();
+        if othercel.is_err(){
+            Ok(PyBool::new(py, false))
+        }
+        else{
+            let otherfq12: &PyFq12 = &othercel.as_ref().unwrap().borrow();
+            Ok(PyBool::new(py, self.fq12 == otherfq12.fq12))
+        }
+    }
+    
     fn pppow(&self, prodend: &PyFr, out: &mut PyFq12) -> PyResult<()>
     {
         if self.pp.len() == 0
@@ -1231,6 +1470,31 @@ impl PyNumberProtocol for PyFq12 {
         Ok(out)
     }
 }
+
+#[pyproto]
+impl PyObjectProtocol for PyFq12 {
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyFq12 ,b: &PyAny| {
+            let othercel = &b.downcast::<PyCell<PyFq12>>();
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherfq12: &PyFq12 = &othercel.as_ref().unwrap().borrow();
+                a.fq12 == otherfq12.fq12
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
+}
+
 
 #[pyfunction]
 fn vec_sum(a: &PyList, py: Python) -> PyResult<String>{
