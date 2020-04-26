@@ -5,7 +5,6 @@ from .pypairing import (
     PyG1,
     PyFr,
     PyG2,
-    py_pairing,
     PyFq,
     PyFq2,
     PyFq12,
@@ -14,14 +13,14 @@ from .pypairing import (
     hashfrs,
     hashg1s,
     dotprod,
-    condense_list
+    condense_list,
+    pair
 )
 
 __all__ = [
     "PyG1",
     "PyFr",
     "PyG2",
-    "py_pairing",
     "PyFq",
     "PyFq2",
     "PyFq12",
@@ -30,5 +29,6 @@ __all__ = [
     "hashfrs",
     "hashg1s",
     "dotprod",
-    "condense_list"
+    "condense_list",
+    "pair"
 ]

@@ -35,7 +35,6 @@ use num_traits::Num;
 
 extern crate byteorder;
 extern crate ff;
-extern crate rand;
 extern crate sha2;
 extern crate hex;
 extern crate group;
@@ -185,13 +184,6 @@ pub trait PairingCurveAffine: CurveAffine {
 
 //*************** END CODE BORROWED FROM PAIRING CRATE **************
 
-#[pyfunction]
-fn py_pairing(g1: &PyG1, g2: &PyG2) -> PyResult<()> {
-    let a = g1.g1.into_affine();
-    let b = g2.g2.into_affine();
-
-    Ok(())
-}
 
 #[pyclass(module = "pypairing")]
 #[derive(Clone)]
@@ -494,7 +486,7 @@ impl PyNumberProtocol for PyG1 {
         self.add_assign(&other);
         Ok(())
     }
-    fn __pow__(lhs: PyG1, rhs: &PyAny, mod_: Option<&'p PyAny>)  -> PyResult<PyG1> {
+    fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
         let mut out = PyG1{
             g1: G1::one(),
             pp: Vec::new(),
@@ -528,7 +520,8 @@ impl PyObjectProtocol for PyG1 {
     }
 }
 
-#[pyclass]
+#[pyclass(module = "pypairing")]
+#[derive(Clone)]
 struct PyG2 {
    g2 : G2,
    pp : Vec<G2>,
@@ -758,14 +751,23 @@ struct PyFr {
 impl PyFr {
 
     #[new]
-    fn new(s1: Option<u64>, s2: Option<u64>, s3: Option<u64>, s4: Option<u64>) -> Self {
+    fn new(s1: Option<&PyAny>, s2: Option<u64>, s3: Option<u64>, s4: Option<u64>) -> Self {
         //let f = Fr::from_repr(FrRepr([s1,s2,s3,s4])).unwrap();
         //PyFr{
         //    fr: f,
         //}
+        // Allows for initialization via either [u64, u64, u64, u64] or arbitrarily-large-int
         match s1 {
             None => PyFr{fr:Fr::one()},
-            Some(s1) => PyFr{fr: Fr::from_repr(FrRepr([s1,s2.unwrap(),s3.unwrap(),s4.unwrap()])).unwrap()}
+            Some(s1) => {
+                match s2 {
+                    None => pyfr_from_pyany(s1).unwrap(),
+                    Some(s2) => {
+                        let is1: u64 = s1.extract().unwrap();
+                        PyFr{fr: Fr::from_repr(FrRepr([is1,s2,s3.unwrap(),s4.unwrap()])).unwrap()}
+                    }
+                }
+            }
         }
     }
     
@@ -964,7 +966,8 @@ impl PyFqRepr {
     }
 }
 
-#[pyclass]
+#[pyclass(module = "pypairing")]
+#[derive(Clone)]
 struct PyFq12 {
     fq12 : Fq12,
     pp : Vec<Fq12>,
@@ -1192,6 +1195,43 @@ impl PyFq12 {
     }
 }
 
+#[pyproto]
+impl PyNumberProtocol for PyFq12 {
+    fn __mul__(lhs: PyFq12, rhs: PyFq12) -> PyResult<PyFq12> {
+        let mut out = PyFq12{
+            fq12: Fq12::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        out.fq12.clone_from(&lhs.fq12);
+        out.fq12.mul_assign(&rhs.fq12);
+        Ok(out)
+    }
+    fn __imul__(&mut self, other: PyFq12) -> PyResult<()> {
+        self.mul_assign(&other);
+        Ok(())
+    }
+    fn __pow__(lhs: PyFq12, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyFq12> {
+        let mut out = PyFq12{
+            fq12: Fq12::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let exp: BigInt = rhs.extract()?;
+            let pyfrexp = bigint_to_pyfr(&exp);
+            lhs.pppow(&pyfrexp, &mut out).unwrap();
+        }
+        else {
+            //let rhscel2 = rhscel.as_ref().unwrap();
+            let exp: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            lhs.pppow(&exp, &mut out).unwrap();
+        }
+        Ok(out)
+    }
+}
+
 #[pyfunction]
 fn vec_sum(a: &PyList, py: Python) -> PyResult<String>{
     let mut sum =  Fr::from_str("0").unwrap();
@@ -1271,7 +1311,7 @@ fn dotprod(output: &mut PyFr, a: &PyList, b: &PyList) -> PyResult<()>{
 
 #[pyfunction]
 fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p PyList> {
-    let l: &PyList = PyList::empty(py);
+    //let l: &PyList = PyList::empty(py);
     //let weed = PyFr{
     //    fr: Fr::one(),
     //};
@@ -1291,7 +1331,18 @@ fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p 
     Ok(PyList::new(py, items))
 }
 
-fn bigint_to_pyfr(bint: &BigInt) -> PyFr {//Result<PyFr, Box<dyn Error>> {
+#[pyfunction]
+//fn pair<'p>(py: Python<'p>, a: &PyG1, b: &PyG2) -> PyResult<&'p PyFq12> {
+fn pair(a: &PyG1, b: &PyG2) -> PyResult<PyFq12> {
+        let affa = a.g1.into_affine();
+        let myfq12 = affa.pairing_with(&b.g2.into_affine());
+        Ok(PyFq12{  fq12: myfq12,
+                    pp: Vec::new(),
+                    pplevel : 0
+        })
+    }
+
+fn bigint_to_pyfr(bint: &BigInt) -> PyFr {
     let bls12_381_r = BigInt::new(Sign::Plus, vec![1u32,4294967295u32,4294859774u32,1404937218u32,161601541u32,859428872u32,698187080u32,1944954707u32]);
     let mut uint = bint % &bls12_381_r;
     // The % in rust is not modulo, it's remainder!
@@ -1301,9 +1352,6 @@ fn bigint_to_pyfr(bint: &BigInt) -> PyFr {//Result<PyFr, Box<dyn Error>> {
     //BigInts only serialize/deserialize into Vec<u32>, while Fr only works with Vec<u64>
     //They are not cross compatible ヽ(ಠ_ಠ)ノ
     let s1 = &uint % 2u128.pow(64);
-    //let s2 = (&uint / (2u128.pow(64))) % 2u128.pow(64);
-    //let s3: BigInt = (&uint / (BigInt::from(2u8).pow(128u8))) % 2u128.pow(64);
-    //let s4: BigInt = &uint / (BigInt::from(2u8).pow(192u8));
     let s2 = (&uint >> 64) % 2u128.pow(64);
     let s3: BigInt = (&uint >> 128) % 2u128.pow(64);
     let s4: BigInt = &uint >> 192;
@@ -1326,6 +1374,23 @@ fn swap_seed_format(inarr: [u32;8]) -> [u8;32] {
     out
 }
 
+fn pyfr_from_pyany(any: &PyAny) -> PyResult<PyFr> {
+    let mut out = PyFr{
+        fr: Fr::one()
+    };
+    let anycel = &any.downcast::<PyCell<PyFr>>();
+    if anycel.is_err(){
+        let bi: BigInt = any.extract()?;
+        let mypyfr = bigint_to_pyfr(&bi);
+        out.fr = mypyfr.fr;
+    }
+    else{
+        let mypyfr: &PyFr = &anycel.as_ref().unwrap().borrow();
+        out.fr.clone_from(&mypyfr.fr);
+    }
+    Ok(out)
+}
+
 #[pymodule]
 fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyG1>()?;
@@ -1336,8 +1401,8 @@ fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFq6>()?;
     m.add_class::<PyFq12>()?;
     m.add_class::<PyFr>()?;
-    m.add_wrapped(wrap_pyfunction!(py_pairing))?;
     //m.add_function(wrap_pyfunction!(vec_sum))?;
+    m.add_wrapped(wrap_pyfunction!(pair))?;
     m.add_wrapped(wrap_pyfunction!(vec_sum))?;
     m.add_wrapped(wrap_pyfunction!(hashfrs))?;
     m.add_wrapped(wrap_pyfunction!(hashg1s))?;
