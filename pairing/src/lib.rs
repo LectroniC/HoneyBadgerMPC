@@ -377,24 +377,29 @@ impl PyG1 {
         let fqy = FqRepr::from(aff.y);
         let arr1: &[u64] = fqx.as_ref();
         let arr2: &[u64] = fqy.as_ref();
-        let arr = [arr1, arr2].concat();
+        let mut end: [u64;1] = [0;1];
+        if aff.infinity {
+            end[0] = 1;
+        }
+        let arr = [arr1, arr2, &end].concat();
         Ok(PyList::new(py, arr))
     }
     
     pub fn __setstate__(&mut self, list: &PyAny) -> PyResult<()>
     {
-        let arr: [u64; 12] = list.extract()?;
+        let arr: [u64; 13] = list.extract()?;
         let fqxr = FqRepr(arr[0..6].try_into().expect("invalid initialization"));
-        let fqyr = FqRepr(arr[6..].try_into().expect("invalid initialization"));
+        let fqyr = FqRepr(arr[6..12].try_into().expect("invalid initialization"));
         let fqx = Fq::from_repr(fqxr).unwrap();
         let fqy = Fq::from_repr(fqyr).unwrap();
+        //There may be a more compact way to do this
+        let inf = arr[12] == 1;
         let ga = G1Affine {
             x: fqx,
             y: fqy,
-            infinity: false
+            infinity: inf
         };
         self.g1 = ga.into_projective();
-        //Hope you didn't need to be able to serialize the infinity point. If you do, please make a PR :)
         Ok(())
     }
     
