@@ -1087,6 +1087,23 @@ impl PyNumberProtocol for PyFr {
         }
         Ok(out)
     }
+    fn __add__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let addend: BigInt = rhs.extract()?;
+            let pyfraddend = bigint_to_pyfr(&addend);
+            out.fr.add_assign(&pyfraddend.fr);
+        }
+        else{
+            let pyfraddend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.add_assign(&pyfraddend.fr);
+        }
+        Ok(out)
+    }
 }
 
 #[pyproto]
