@@ -14,7 +14,7 @@ class PolyCommitLog:
     def __init__(self, crs=None, degree_max=33):
         if crs is None:
             n = degree_max + 1
-            self.gs = G1.hash(b"honeybadgerg", length=n)
+            self.gs = G1.hash_many(b"honeybadgerg", n)
             self.h = G1.hash(b"honeybadgerh")
             self.u = G1.hash(b"honeybadgeru")
         else:

@@ -17,8 +17,8 @@ class inner_product_prover:
         n = len(a_vec)
         assert len(b_vec) == n
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
-            h_vec = G1.hash(b"honeybadgerh", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
+            h_vec = G1.hash_many(b"honeybadgerh", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, h_vec, u] = crs
@@ -88,8 +88,8 @@ class inner_product_verifier:
 
     def set_up_params(self, n, P, crs=None):
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
-            h_vec = G1.hash(b"honeybadgerh", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
+            h_vec = G1.hash_many(b"honeybadgerh", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, h_vec, u] = crs
@@ -128,7 +128,7 @@ class inner_product_one_known_prover:
         n = len(a_vec)
         assert len(b_vec) == n
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, u] = crs
@@ -188,7 +188,7 @@ class inner_product_one_known_verifier:
 
     def set_up_params(self, b_vec, n, P, crs=None):
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, u] = crs

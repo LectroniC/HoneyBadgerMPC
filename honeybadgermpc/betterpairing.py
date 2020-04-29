@@ -220,14 +220,18 @@ class G1:
             out.randomize(seed)
         return G1(out)
 
-    # length determines how many G1 values to return
     @staticmethod
-    def hash(bytestr, length=None):
+    def hash(bytestr):
         assert type(bytestr) is bytes
         hashout = sha256(bytestr).hexdigest()
         seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
-        if length is None:
-            return G1.rand(seed)
+        return G1.rand(seed)
+
+    @staticmethod
+    def hash_many(bytestr, length):
+        assert type(bytestr) is bytes
+        hashout = sha256(bytestr).hexdigest()
+        seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
         assert type(length) is int
         out = [G1.rand(seed)]
         for j in range(0, length - 1):
@@ -429,14 +433,18 @@ class G2:
             out.randomize(seed)
         return G2(out)
 
-    # length determines how many G2 values to return
     @staticmethod
-    def hash(bytestr, length=None):
+    def hash(bytestr):
         assert type(bytestr) is bytes
         hashout = sha256(bytestr).hexdigest()
         seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
-        if length is None:
-            return G2.rand(seed)
+        return G2.rand(seed)
+
+    @staticmethod
+    def hash_many(bytestr, length):
+        assert type(bytestr) is bytes
+        hashout = sha256(bytestr).hexdigest()
+        seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
         assert type(length) is int
         out = [G2.rand(seed)]
         for j in range(0, length - 1):

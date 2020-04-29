@@ -125,8 +125,8 @@ def prove_inner_product(a_vec, b_vec, comm=None, crs=None):
     n = len(a_vec)
     assert len(b_vec) == n
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
-        h_vec = G1.hash(b"honeybadgerh", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        h_vec = G1.hash_many(b"honeybadgerh", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, h_vec, u] = crs
@@ -176,8 +176,8 @@ def verify_inner_product(comm, iprod, proof, crs=None):
     n = proof[0]
     iproof = proof[1:]
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
-        h_vec = G1.hash(b"honeybadgerh", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        h_vec = G1.hash_many(b"honeybadgerh", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, h_vec, u] = crs
@@ -232,7 +232,7 @@ def prove_inner_product_one_known(a_vec, b_vec, comm=None, crs=None):
     n = len(a_vec)
     assert len(b_vec) == n
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -281,7 +281,7 @@ def verify_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
     n = proof[0]
     iproof = proof[1:]
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -366,7 +366,7 @@ def prove_batch_inner_product_one_known(a_vec, b_vecs, comm=None, crs=None):
 
     n = len(a_vec)
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -422,7 +422,7 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
     n = proof[0]
     iproof = proof[1:]
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -548,7 +548,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
 
     t = len(a_vecs[0])
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -658,7 +658,7 @@ def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, cr
     for i in range(len(proofs)):
         iproofs.append(proofs[i][1:])
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs

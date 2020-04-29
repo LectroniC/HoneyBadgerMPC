@@ -18,6 +18,7 @@ extern crate pyo3;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 use pyo3::types::PyBool;
+use pyo3::types::PyBytes;
 use pyo3::PyNumberProtocol;
 use pyo3::basic::CompareOp;
 //mod number;
@@ -184,7 +185,6 @@ pub trait PairingCurveAffine: CurveAffine {
 
 
 //*************** END CODE BORROWED FROM PAIRING CRATE **************
-
 
 #[pyclass(module = "pypairing")]
 #[derive(Clone)]
@@ -463,6 +463,42 @@ impl PyG1 {
             }
         }
         Ok(())
+    }
+    
+    #[staticmethod]
+    fn hash(bytestr: &PyBytes) -> PyResult<PyG1>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let g = G1::random(&mut rng);
+        Ok(PyG1{
+            g1: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn hash_many(bytestr: &PyBytes, length: usize) -> PyResult<Vec<PyG1>>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut out = Vec::with_capacity(length);
+        for i in 0..length{
+            let g = G1::random(&mut rng);
+            out.push(PyG1{
+                g1: g,
+                pp: Vec::new(),
+                pplevel : 0
+            });
+        }
+        Ok(out)
     }
     
     #[staticmethod]
@@ -799,6 +835,42 @@ impl PyG2 {
     }
     
     #[staticmethod]
+    fn hash(bytestr: &PyBytes) -> PyResult<PyG2>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let g = G2::random(&mut rng);
+        Ok(PyG2{
+            g2: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn hash_many(bytestr: &PyBytes, length: usize) -> PyResult<Vec<PyG2>>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut out = Vec::with_capacity(length);
+        for i in 0..length{
+            let g = G2::random(&mut rng);
+            out.push(PyG2{
+                g2: g,
+                pp: Vec::new(),
+                pplevel : 0
+            });
+        }
+        Ok(out)
+    }
+    
+    #[staticmethod]
     fn identity() -> PyResult<PyG2> {
         let g =  G2::zero();
         Ok(PyG2{
@@ -1036,6 +1108,34 @@ impl PyFr {
             let otherfr: &PyFr = &otherresult.unwrap();
             Ok(PyBool::new(py, self.fr == otherfr.fr))
         }
+    }
+    
+    #[staticmethod]
+    fn hash(bytestr: &PyBytes) -> PyResult<PyFr>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let f = Fr::random(&mut rng);
+        Ok(PyFr{fr: f})
+    }
+    
+    #[staticmethod]
+    fn hash_many(bytestr: &PyBytes, length: usize) -> PyResult<Vec<PyFr>>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut out = Vec::with_capacity(length);
+        for i in 0..length{
+            let f = Fr::random(&mut rng);
+            out.push(PyFr{fr: f});
+        }
+        Ok(out)
     }
     
     #[staticmethod]
@@ -1620,13 +1720,44 @@ fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p 
 #[pyfunction]
 //fn pair<'p>(py: Python<'p>, a: &PyG1, b: &PyG2) -> PyResult<&'p PyFq12> {
 fn pair(a: &PyG1, b: &PyG2) -> PyResult<PyFq12> {
-        let affa = a.g1.into_affine();
-        let myfq12 = affa.pairing_with(&b.g2.into_affine());
-        Ok(PyFq12{  fq12: myfq12,
-                    pp: Vec::new(),
-                    pplevel : 0
-        })
+    let affa = a.g1.into_affine();
+    let myfq12 = affa.pairing_with(&b.g2.into_affine());
+    Ok(PyFq12{  fq12: myfq12,
+                pp: Vec::new(),
+                pplevel : 0
+    })
+}
+
+#[derive(Clone)]
+enum preprocessable{
+    PyG1,
+    PyG2,
+    PyFq12
+}
+
+/*#[pyclass(module = "pypairing")]
+#[derive(Clone)]
+struct Point {
+}
+
+#[pymethods]
+impl Point {
+    #[new]
+    fn new() -> Self {
+        Point{}
     }
+}
+
+#[pyfunction]
+fn precomp_list(mut list: Vec<preprocessable>, level: usize) -> PyResult<()> {
+//fn precomp_list(list: &mut Vec, level: usize) -> PyResult<()> {
+    for i in 1..2 {
+    //for item in list.iter(){
+       //item.preprocess(level);
+       let i = 2;
+    }
+    Ok(())
+}*/
 
 fn bigint_to_pyfr(bint: &BigInt) -> PyFr {
     let bls12_381_r = BigInt::new(Sign::Plus, vec![1u32,4294967295u32,4294859774u32,1404937218u32,161601541u32,859428872u32,698187080u32,1944954707u32]);
