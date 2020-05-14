@@ -53,7 +53,7 @@ figure.savefig("hbavss_graphs.pdf")
 Average by values shared
 """
 
-figure, axes = plt.subplots(nrows = 2, ncols = 2, figsize=(9,7))
+figure, axes = plt.subplots(nrows = 2, ncols = 2, figsize=(9,9))
 average_bytes_sent_by_dealer = []
 average_bytes_sent_by_others = []
 average_commitments_sent_by_dealers = []
