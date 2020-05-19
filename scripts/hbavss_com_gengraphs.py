@@ -46,6 +46,12 @@ axes[0,0].plot(ts[0],average_bytes_sent_by_dealer)
 axes[0,1].plot(ts[1],average_bytes_sent_by_others)
 axes[1,0].plot(ts[2],average_commitments_sent_by_dealers)
 axes[1,1].plot(ts[3],average_commitments_sent_by_others)
+
+for i in range(2):
+  for j in range(2):
+    axes[i,j].set_xlim(left=0)
+    axes[i,j].set_ylim(bottom=0)
+
 figure.savefig("hbavss_graphs.pdf")
 
 
@@ -95,4 +101,8 @@ axes[0,0].plot(ts[0],average_bytes_sent_by_dealer)
 axes[0,1].plot(ts[1],average_bytes_sent_by_others)
 axes[1,0].plot(ts[2],average_commitments_sent_by_dealers)
 axes[1,1].plot(ts[3],average_commitments_sent_by_others)
+for i in range(2):
+  for j in range(2):
+    axes[i,j].set_xlim(left=0)
+    axes[i,j].set_ylim(bottom=0)
 figure.savefig("hbavss_graphs_average_by_number_of_value_shared.pdf")

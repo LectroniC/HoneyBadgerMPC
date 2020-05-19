@@ -1,0 +1,700 @@
+{
+    "machine_info": {
+        "node": "a56696365ff3",
+        "processor": "",
+        "machine": "x86_64",
+        "python_compiler": "GCC 6.3.0 20170516",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.7.3",
+        "python_version": "3.7.3",
+        "python_build": [
+            "default",
+            "Jun 11 2019 01:11:15"
+        ],
+        "release": "4.19.76-linuxkit",
+        "system": "Linux",
+        "cpu": {
+            "vendor_id": "AuthenticAMD",
+            "hardware": "unknown",
+            "brand": "AMD Ryzen 7 3700X 8-Core Processor"
+        }
+    },
+    "commit_info": {
+        "id": "unversioned",
+        "time": null,
+        "author_time": null,
+        "dirty": false,
+        "project": "HoneyBadgerMPC",
+        "branch": "(unknown)"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_benchmark_batch_verify[1]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_verify[1]",
+            "params": {
+                "t": 1
+            },
+            "param": "1",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.007445700000971556,
+                "max": 0.009238800033926964,
+                "mean": 0.007585730812010857,
+                "stddev": 0.00023637897825187166,
+                "rounds": 130,
+                "median": 0.007538900477811694,
+                "iqr": 7.810001261532307e-05,
+                "q1": 0.007507400005124509,
+                "q3": 0.007585500017739832,
+                "iqr_outliers": 8,
+                "stddev_outliers": 5,
+                "outliers": "5;8",
+                "ld15iqr": 0.007445700000971556,
+                "hd15iqr": 0.0077164999675005674,
+                "ops": 131.82645479808633,
+                "total": 0.9861450055614114,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_verify[2]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_verify[2]",
+            "params": {
+                "t": 2
+            },
+            "param": "2",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.01367799995932728,
+                "max": 0.015136400004848838,
+                "mean": 0.01390899034029442,
+                "stddev": 0.00021871092170724256,
+                "rounds": 72,
+                "median": 0.013853949960321188,
+                "iqr": 0.00014985055895522237,
+                "q1": 0.013787549978587776,
+                "q3": 0.013937400537542999,
+                "iqr_outliers": 7,
+                "stddev_outliers": 9,
+                "outliers": "9;7",
+                "ld15iqr": 0.01367799995932728,
+                "hd15iqr": 0.014171099988743663,
+                "ops": 71.89594467565303,
+                "total": 1.0014473045011982,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_verify[5]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_verify[5]",
+            "params": {
+                "t": 5
+            },
+            "param": "5",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.04457250004634261,
+                "max": 0.04692759900353849,
+                "mean": 0.044989560356201684,
+                "stddev": 0.0005544608144466484,
+                "rounds": 23,
+                "median": 0.04477359901648015,
+                "iqr": 0.0002788746205624193,
+                "q1": 0.04470255007618107,
+                "q3": 0.04498142469674349,
+                "iqr_outliers": 4,
+                "stddev_outliers": 3,
+                "outliers": "3;4",
+                "ld15iqr": 0.04457250004634261,
+                "hd15iqr": 0.04548039997462183,
+                "ops": 22.22737879816051,
+                "total": 1.0347598881926388,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_verify[11]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_verify[11]",
+            "params": {
+                "t": 11
+            },
+            "param": "11",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.12030739895999432,
+                "max": 0.12432809895835817,
+                "mean": 0.12139210976763731,
+                "stddev": 0.0013961706793444385,
+                "rounds": 9,
+                "median": 0.12092769902665168,
+                "iqr": 0.0017322500061709434,
+                "q1": 0.12035679875407368,
+                "q3": 0.12208904876024462,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 0.12030739895999432,
+                "hd15iqr": 0.12432809895835817,
+                "ops": 8.237767692761496,
+                "total": 1.0925289879087359,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_verify[21]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_verify[21]",
+            "params": {
+                "t": 21
+            },
+            "param": "21",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.2925583999603987,
+                "max": 0.3031730999937281,
+                "mean": 0.29557200039271264,
+                "stddev": 0.004395566922267596,
+                "rounds": 5,
+                "median": 0.29387620103079826,
+                "iqr": 0.004600450862199068,
+                "q1": 0.29276082493015565,
+                "q3": 0.2973612757923547,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 0.2925583999603987,
+                "hd15iqr": 0.3031730999937281,
+                "ops": 3.383270400008617,
+                "total": 1.4778600019635633,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_verify[33]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_verify[33]",
+            "params": {
+                "t": 33
+            },
+            "param": "33",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.5212454029824585,
+                "max": 0.5831308029592037,
+                "mean": 0.5489743627840653,
+                "stddev": 0.024249822874442644,
+                "rounds": 5,
+                "median": 0.5392164029181004,
+                "iqr": 0.03432290078490041,
+                "q1": 0.5338652772479691,
+                "q3": 0.5681881780328695,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 0.5212454029824585,
+                "hd15iqr": 0.5831308029592037,
+                "ops": 1.8215786889001628,
+                "total": 2.7448718139203265,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_creation[1]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_creation[1]",
+            "params": {
+                "t": 1
+            },
+            "param": "1",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.02115140005480498,
+                "max": 0.027600400033406913,
+                "mean": 0.022851415882254707,
+                "stddev": 0.0016569872234104815,
+                "rounds": 38,
+                "median": 0.0221081999479793,
+                "iqr": 0.002153799985535443,
+                "q1": 0.02158539998345077,
+                "q3": 0.023739199968986213,
+                "iqr_outliers": 1,
+                "stddev_outliers": 9,
+                "outliers": "9;1",
+                "ld15iqr": 0.02115140005480498,
+                "hd15iqr": 0.027600400033406913,
+                "ops": 43.760964535092604,
+                "total": 0.8683538035256788,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_creation[2]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_creation[2]",
+            "params": {
+                "t": 2
+            },
+            "param": "2",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.04001080000307411,
+                "max": 0.045551800983957946,
+                "mean": 0.04120588019140996,
+                "stddev": 0.0014744831782046257,
+                "rounds": 20,
+                "median": 0.04073395050363615,
+                "iqr": 0.0009949495433829725,
+                "q1": 0.04026490048272535,
+                "q3": 0.041259850026108325,
+                "iqr_outliers": 2,
+                "stddev_outliers": 2,
+                "outliers": "2;2",
+                "ld15iqr": 0.04001080000307411,
+                "hd15iqr": 0.0445979000069201,
+                "ops": 24.26838100180824,
+                "total": 0.8241176038281992,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_creation[5]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_creation[5]",
+            "params": {
+                "t": 5
+            },
+            "param": "5",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.19907939992845058,
+                "max": 0.215869199950248,
+                "mean": 0.20433924016542732,
+                "stddev": 0.006725710699084217,
+                "rounds": 5,
+                "median": 0.20148059993516654,
+                "iqr": 0.006868950877105817,
+                "q1": 0.20040922492626123,
+                "q3": 0.20727817580336705,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 0.19907939992845058,
+                "hd15iqr": 0.215869199950248,
+                "ops": 4.893822641164898,
+                "total": 1.0216962008271366,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_creation[11]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_creation[11]",
+            "params": {
+                "t": 11
+            },
+            "param": "11",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.9929770010057837,
+                "max": 1.0869727010140195,
+                "mean": 1.0282776206033304,
+                "stddev": 0.037436037751606116,
+                "rounds": 5,
+                "median": 1.0277282000752166,
+                "iqr": 0.05060977424727753,
+                "q1": 0.9973301509744488,
+                "q3": 1.0479399252217263,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 0.9929770010057837,
+                "hd15iqr": 1.0869727010140195,
+                "ops": 0.9725000135792716,
+                "total": 5.141388103016652,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_creation[21]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_creation[21]",
+            "params": {
+                "t": 21
+            },
+            "param": "21",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 4.303305706940591,
+                "max": 4.475416401051916,
+                "mean": 4.386000962019898,
+                "stddev": 0.07923425104911372,
+                "rounds": 5,
+                "median": 4.386821103049442,
+                "iqr": 0.15040891835815273,
+                "q1": 4.308808903966565,
+                "q3": 4.459217822324717,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 4.303305706940591,
+                "hd15iqr": 4.475416401051916,
+                "ops": 0.2279981260057606,
+                "total": 21.93000481009949,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_batch_creation[33]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_batch_creation[33]",
+            "params": {
+                "t": 33
+            },
+            "param": "33",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 11.609819391043857,
+                "max": 11.775520717026666,
+                "mean": 11.661030499008485,
+                "stddev": 0.06787899170456935,
+                "rounds": 5,
+                "median": 11.641814694972709,
+                "iqr": 0.08053490638849325,
+                "q1": 11.612149194814265,
+                "q3": 11.692684101202758,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 11.609819391043857,
+                "hd15iqr": 11.775520717026666,
+                "ops": 0.08575571430715563,
+                "total": 58.30515249504242,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_prover_dbatch_vary_poly[1]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_prover_dbatch_vary_poly[1]",
+            "params": {
+                "polycount": 1
+            },
+            "param": "1",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.2541875969618559,
+                "max": 0.2615540960105136,
+                "mean": 0.2582096564117819,
+                "stddev": 0.003334959536935313,
+                "rounds": 5,
+                "median": 0.2589254970662296,
+                "iqr": 0.006164699676446617,
+                "q1": 0.2550282712909393,
+                "q3": 0.2611929709673859,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 0.2541875969618559,
+                "hd15iqr": 0.2615540960105136,
+                "ops": 3.87282185297223,
+                "total": 1.2910482820589095,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_prover_dbatch_vary_poly[3]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_prover_dbatch_vary_poly[3]",
+            "params": {
+                "polycount": 3
+            },
+            "param": "3",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.37719919404480606,
+                "max": 0.3892465999815613,
+                "mean": 0.3831751572433859,
+                "stddev": 0.00545519729335797,
+                "rounds": 5,
+                "median": 0.3832109021022916,
+                "iqr": 0.010240876523312181,
+                "q1": 0.3780174447747413,
+                "q3": 0.3882583212980535,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 0.37719919404480606,
+                "hd15iqr": 0.3892465999815613,
+                "ops": 2.6097725311686064,
+                "total": 1.9158757862169296,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_prover_dbatch_vary_poly[10]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_prover_dbatch_vary_poly[10]",
+            "params": {
+                "polycount": 10
+            },
+            "param": "10",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.8007439039647579,
+                "max": 0.834609805024229,
+                "mean": 0.8182117042131722,
+                "stddev": 0.015105545541891408,
+                "rounds": 5,
+                "median": 0.8194668040378019,
+                "iqr": 0.02794037529383786,
+                "q1": 0.8040382789913565,
+                "q3": 0.8319786542851944,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 0.8007439039647579,
+                "hd15iqr": 0.834609805024229,
+                "ops": 1.2221775792875553,
+                "total": 4.091058521065861,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_prover_dbatch_vary_poly[33]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_prover_dbatch_vary_poly[33]",
+            "params": {
+                "polycount": 33
+            },
+            "param": "33",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 2.2294218270108104,
+                "max": 2.310435532941483,
+                "mean": 2.2635400105733425,
+                "stddev": 0.032781863196824246,
+                "rounds": 5,
+                "median": 2.259717031964101,
+                "iqr": 0.05172942273202352,
+                "q1": 2.235914581484394,
+                "q3": 2.2876440042164177,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 2.2294218270108104,
+                "hd15iqr": 2.310435532941483,
+                "ops": 0.44178587315834783,
+                "total": 11.317700052866712,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_prover_dbatch_vary_poly[100]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_prover_dbatch_vary_poly[100]",
+            "params": {
+                "polycount": 100
+            },
+            "param": "100",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 6.486712384968996,
+                "max": 6.783259521005675,
+                "mean": 6.591236844402738,
+                "stddev": 0.11249131953063453,
+                "rounds": 5,
+                "median": 6.560525871929713,
+                "iqr": 0.09135602350579575,
+                "q1": 6.535200893034926,
+                "q3": 6.626556916540721,
+                "iqr_outliers": 1,
+                "stddev_outliers": 1,
+                "outliers": "1;1",
+                "ld15iqr": 6.486712384968996,
+                "hd15iqr": 6.783259521005675,
+                "ops": 0.1517165933506391,
+                "total": 32.95618422201369,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_benchmark_prover_dbatch_vary_poly[300]",
+            "fullname": "benchmark/test_benchmark_poly_commit_log.py::test_benchmark_prover_dbatch_vary_poly[300]",
+            "params": {
+                "polycount": 300
+            },
+            "param": "300",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 18.85159008007031,
+                "max": 19.8874554480426,
+                "mean": 19.218291184818373,
+                "stddev": 0.3939410414539325,
+                "rounds": 5,
+                "median": 19.084141950006597,
+                "iqr": 0.343466146470746,
+                "q1": 19.021248285018373,
+                "q3": 19.36471443148912,
+                "iqr_outliers": 1,
+                "stddev_outliers": 1,
+                "outliers": "1;1",
+                "ld15iqr": 18.85159008007031,
+                "hd15iqr": 19.8874554480426,
+                "ops": 0.05203376254336063,
+                "total": 96.09145592409186,
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2020-05-17T23:25:49.463037",
+    "version": "3.2.3"
+}

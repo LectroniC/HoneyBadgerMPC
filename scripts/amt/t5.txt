@@ -1,0 +1,36 @@
+2020-05-17 22:28:49   461   461  INFO KatePublicParameters:  15 | Reading back q-PKE parameters... (verify = 0)
+2020-05-17 22:28:49   461   461  INFO KatePublicParameters:  21 | available q = 500, s = 18697742816720279021148692553625037853417668257447715232778720456762705618547
+2020-05-17 22:28:49   461   461  INFO KatePublicParameters:  36 | wanted q = 5
+2020-05-17 22:28:49   461   461  INFO KatePublicParameters:  50 | 5 params left to read, looking at crs-0 ...
+2020-05-17 22:28:49   461   461  INFO                 main:  51 | Degree t = 5 poly, evaluated at n = 16 points, iters = 10
+2020-05-17 22:28:49   461   461  PERF                 main:  58 |  - AccumulatorTree: 7.00 mus
+2020-05-17 22:28:49   461   461  PERF                 main:  73 |  - Roots of unity eval: 8.00 mus
+2020-05-17 22:28:49   461   461  PERF                 main:  81 |  - AuthAccumulatorTree: 1.79 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 0): 2.74 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 1): 2.71 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 2): 2.85 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 3): 2.81 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 4): 2.73 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 5): 2.79 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 6): 2.73 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 7): 2.70 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 8): 2.72 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 9): 2.79 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 0): 2.73 ms
+2020-05-17 22:28:49   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 1): 2.70 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 2): 2.78 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 3): 2.74 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 4): 2.73 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 5): 2.71 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 6): 2.78 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 7): 2.72 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 8): 2.71 ms
+2020-05-17 22:28:50   461   461  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 9): 2.76 ms
+2020-05-17 22:28:50   461   461  PERF                 main: 102 | 
+2020-05-17 22:28:50   461   461  PERF                 main: 103 | Accum tree: 7.00 mus per lap, -/+ nan mus stddev, 7.00 mus min, 7.00 mus max (1 laps)
+2020-05-17 22:28:50   461   461  PERF                 main: 104 | Roots-of-unity eval : 8.00 mus per lap, -/+ nan mus stddev, 8.00 mus min, 8.00 mus max (1 laps)
+2020-05-17 22:28:50   461   461  PERF                 main: 105 | Auth accum tree: 1.79 ms per lap, -/+ nan mus stddev, 1.79 ms min, 1.79 ms max (1 laps)
+2020-05-17 22:28:50   461   461  PERF                 main: 106 | Auth roots-of-unity eval: 2.73 ms per lap, -/+ 27.4243 mus stddev, 2.70 ms min, 2.78 ms max (10 laps)
+2020-05-17 22:28:50   461   461  PERF                 main: 107 | Auth roots-of-unity eval (simulated): 2.76 ms per lap, -/+ 45.9422 mus stddev, 2.70 ms min, 2.85 ms max (10 laps)
+2020-05-17 22:28:50   461   461  PERF                 main: 108 | 
+2020-05-17 22:28:50   461   461  INFO                 main: 112 | Exited succsessfully!

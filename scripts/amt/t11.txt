@@ -1,0 +1,36 @@
+2020-05-17 22:28:50   462   462  INFO KatePublicParameters:  15 | Reading back q-PKE parameters... (verify = 0)
+2020-05-17 22:28:50   462   462  INFO KatePublicParameters:  21 | available q = 500, s = 18697742816720279021148692553625037853417668257447715232778720456762705618547
+2020-05-17 22:28:50   462   462  INFO KatePublicParameters:  36 | wanted q = 11
+2020-05-17 22:28:50   462   462  INFO KatePublicParameters:  50 | 11 params left to read, looking at crs-0 ...
+2020-05-17 22:28:50   462   462  INFO                 main:  51 | Degree t = 11 poly, evaluated at n = 34 points, iters = 10
+2020-05-17 22:28:50   462   462  PERF                 main:  58 |  - AccumulatorTree: 13.00 mus
+2020-05-17 22:28:50   462   462  PERF                 main:  73 |  - Roots of unity eval: 37.00 mus
+2020-05-17 22:28:50   462   462  PERF                 main:  81 |  - AuthAccumulatorTree: 7.58 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 0): 9.07 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 1): 8.55 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 2): 8.56 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 3): 8.93 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 4): 8.63 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 5): 8.61 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 6): 8.63 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 7): 8.61 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 8): 8.68 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  90 |  - AuthRootsOfUnityEval simulated (iter 9): 8.57 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 0): 12.98 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 1): 13.04 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 2): 12.96 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 3): 12.91 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 4): 13.19 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 5): 13.05 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 6): 12.97 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 7): 13.40 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 8): 13.04 ms
+2020-05-17 22:28:50   462   462  PERF                 main:  99 |  - AuthRootsOfUnityEval (iter 9): 13.08 ms
+2020-05-17 22:28:50   462   462  PERF                 main: 102 | 
+2020-05-17 22:28:50   462   462  PERF                 main: 103 | Accum tree: 13.00 mus per lap, -/+ nan mus stddev, 13.00 mus min, 13.00 mus max (1 laps)
+2020-05-17 22:28:50   462   462  PERF                 main: 104 | Roots-of-unity eval : 37.00 mus per lap, -/+ nan mus stddev, 37.00 mus min, 37.00 mus max (1 laps)
+2020-05-17 22:28:50   462   462  PERF                 main: 105 | Auth accum tree: 7.58 ms per lap, -/+ nan mus stddev, 7.58 ms min, 7.58 ms max (1 laps)
+2020-05-17 22:28:50   462   462  PERF                 main: 106 | Auth roots-of-unity eval: 13.06 ms per lap, -/+ 134.086 mus stddev, 12.91 ms min, 13.40 ms max (10 laps)
+2020-05-17 22:28:50   462   462  PERF                 main: 107 | Auth roots-of-unity eval (simulated): 8.68 ms per lap, -/+ 166.292 mus stddev, 8.55 ms min, 9.07 ms max (10 laps)
+2020-05-17 22:28:50   462   462  PERF                 main: 108 | 
+2020-05-17 22:28:50   462   462  INFO                 main: 112 | Exited succsessfully!
