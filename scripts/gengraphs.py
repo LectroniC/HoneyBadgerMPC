@@ -141,4 +141,3 @@ plt.title("PolyCommitLog vs AMT Dealer Performance")
 plt.xticks(n_pos, n_vals)
 plt.legend(loc="best")
 plt.savefig("pcl vs amt", bbox_inches='tight')
-

@@ -701,7 +701,7 @@ class HbAvssBatchLoglin:
         if pc is not None:
             self.poly_commit = pc
         else:
-            self.poly_commit = PolyCommitLog()
+            self.poly_commit = PolyCommitLog(crs=None, degree_max=t)
             #self.poly_commit.preprocess_prover()
             #self.poly_commit.preprocess_verifier()
 
