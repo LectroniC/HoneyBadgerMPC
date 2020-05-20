@@ -1,4 +1,5 @@
-from honeybadgermpc.betterpairing import ZR, G1
+#from honeybadgermpc.betterpairing import ZR, G1
+from pypairing import ZR, G1
 from honeybadgermpc.proofs import MerkleTree
 import pickle
 import math
@@ -43,7 +44,7 @@ class inner_product_prover:
 
         proofStep = []
         if n % 2 == 1:
-            na, nb = -1 * a_vec[-1], -1 * b_vec[-1]
+            na, nb =  a_vec[-1] * -1, b_vec[-1] * -1
             P *= g_vec[-1] ** (na) * h_vec[-1] ** (nb) * u ** (-na * nb)
             proofStep.append(na)
             proofStep.append(nb)
@@ -66,7 +67,7 @@ class inner_product_prover:
         await self.send_queue.put(proofStep)
         x = await self.receive_queue.get()
 
-        xi = 1 / x
+        xi = x**-1
         g_vec_p, h_vec_p, a_vec_p, b_vec_p = [], [], [], []
         for i in range(n_p):
             g_vec_p.append(g_vec[:n_p][i] ** xi * g_vec[n_p:][i] ** x)
@@ -106,7 +107,7 @@ class inner_product_verifier:
             [L, R] = await self.receive_queue.get()
         x = ZR.random()
         await self.send_queue.put(x)
-        xi = 1 / x
+        xi = x**-1
         n_p = n // 2
         g_vec_p = []
         h_vec_p = []

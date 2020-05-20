@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import pypairing
 from pickle import dumps, loads
 from honeybadgermpc.betterpairing import ZR, interpolate_g1_at_x, G1
 from honeybadgermpc.polynomial import polynomials_over
@@ -70,7 +71,6 @@ class HbAvssLight:
         Handle the implication of AVSS.
         Return True if the implication is valid, False otherwise.
         """
-        print("got implication")
         # discard if PKj ! = g^SKj
         if self.public_keys[j] != pow(self.g, j_sk):
             return False
@@ -681,7 +681,7 @@ def get_avss_params(n, t):
 
 class HbAvssBatchLoglin:
     def __init__(
-        self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
+        self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=pypairing.ZR
     ):  # (# noqa: E501)
         self.public_keys, self.private_key = public_keys, private_key
         self.n, self.t, self.my_id = n, t, my_id
@@ -937,7 +937,7 @@ class HbAvssBatchLoglin:
         # BatchPolyCommit
         #   Cs  <- BatchPolyCommit(SP,φ(·,k))
         # TODO: Whether we should keep track of that or not
-        r = ZR.random()
+        r = pypairing.ZR.random()
         for k in range(secret_count):
             phi[k] = self.poly.random(self.t, values[k])
             commitments[k] = self.poly_commit.commit(phi[k], r)

@@ -1,4 +1,4 @@
-﻿from pypairing import PyFq, PyFq2, PyFq12, PyFqRepr, PyG1, PyG2, PyFr, hashg1s, hashfrs, dotprod, condense_list
+﻿from pypairing import PyFq, PyFq2, GT as PyFq12, PyFqRepr, G1 as PyG1, G2 as PyG2, ZR as PyFr, hashg1s, hashfrs, dotprod, condense_list
 import random
 import re
 import struct
@@ -133,6 +133,9 @@ class G1:
         out = G1.one()
         self.pyg1.ppmul(exponend.val, out.pyg1)
         return out
+
+    def pow(self, other):
+        return self.__pow__(other)
 
     def __ipow__(self, other):
         if type(other) is int:
@@ -868,8 +871,7 @@ def inner_product(zrlista, zrlistb):
     #for i in range(len(zrlista)):
     #    pyfrlista.append(zrlista[i].val)
     #    pyfrlistb.append(zrlistb[i].val)
-    out = ZR(0)
-    dotprod(out.val, pyfrlista, pyfrlistb)
+    out = ZR(dotprod(pyfrlista, pyfrlistb))
     return(out)
     
 

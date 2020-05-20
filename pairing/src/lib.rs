@@ -19,6 +19,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 use pyo3::types::PyBool;
 use pyo3::types::PyBytes;
+use pyo3::types::PyLong;
 use pyo3::PyNumberProtocol;
 use pyo3::basic::CompareOp;
 //mod number;
@@ -186,7 +187,7 @@ pub trait PairingCurveAffine: CurveAffine {
 
 //*************** END CODE BORROWED FROM PAIRING CRATE **************
 
-#[pyclass(module = "pypairing")]
+#[pyclass(module = "pypairing", name = G1)]
 #[derive(Clone)]
 struct PyG1 {
    g1 : G1,
@@ -411,8 +412,8 @@ impl PyG1 {
         let mut base: u64 = 2;
         //calling pow on a u64 only accepts a u32 parameter for reasons undocumented
         base = base.pow(level as u32);
-        let ppsize = (base as usize - 1) * (255 + level - 1)/(level);
-        self.pp = Vec::with_capacity(ppsize);
+        let ppsize = (base - 1) * ((255 + level as u64 - 1)/(level as u64));
+        self.pp = Vec::with_capacity(ppsize as usize);
         //FrRepr::from only takes a u64
         let factor = Fr::from_repr(FrRepr::from(base)).unwrap();
         self.pp.push(self.g1.clone());
@@ -424,7 +425,7 @@ impl PyG1 {
             self.pp.push(next);
         }
         //(x + y - 1) / y is a way to round up the integer division x/y
-        for i in base-1..(base - 1) * (255 + level as u64 - 1)/(level as u64) {
+        for i in base-1..(base - 1) * ((255 + level as u64 - 1)/(level as u64)) {
             let mut next = self.pp[i as usize - (base-1) as usize].clone();
             //Wait, so add_assign takes a borrowed object but mul_assign doesn't?!?!?!?
             next.mul_assign(factor);
@@ -465,6 +466,20 @@ impl PyG1 {
         Ok(())
     }
     
+    fn get_pplevel(&self) -> PyResult<usize> {
+        Ok(self.pplevel)
+    }
+
+    fn pow(&self, rhs: PyFr)  -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        self.ppmul(&rhs, &mut out).unwrap();
+        Ok(out)
+    }
+
     #[staticmethod]
     fn hash(bytestr: &PyBytes) -> PyResult<PyG1>{
         let bytes: &[u8] = bytestr.as_bytes();
@@ -560,7 +575,7 @@ impl PyNumberProtocol for PyG1 {
         self.add_assign(&other)?;
         Ok(())
     }
-    fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
+    /*fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
         let mut out = PyG1{
             g1: G1::one(),
             pp: Vec::new(),
@@ -578,6 +593,15 @@ impl PyNumberProtocol for PyG1 {
             lhs.ppmul(&exp, &mut out).unwrap();
         }
         Ok(out)
+    }*/
+    fn __pow__(lhs: PyG1, rhs: PyFr, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        lhs.ppmul(&rhs, &mut out).unwrap();
+        Ok(out)
     }
 }
 
@@ -587,10 +611,18 @@ impl PyObjectProtocol for PyG1 {
         let aff = self.g1.into_affine();
         Ok(format!("({}, {})",aff.x, aff.y))
     }
-    fn __repr__(&self) -> PyResult<String> {
+    /*fn __repr__(&self) -> PyResult<String> {
         let aff = self.g1.into_affine();
         Ok(format!("({}, {})",aff.x, aff.y))
         //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
+    }*/
+    fn __repr__(&self) -> PyResult<String> {
+        let aff = self.g1.into_affine();
+        let hex1 = aff.x.to_string();
+        let hex2 = aff.y.to_string();
+        let bi1 = BigInt::from_str_radix(&hex1[5..hex1.len()-1], 16).unwrap();
+        let bi2 = BigInt::from_str_radix(&hex2[5..hex2.len()-1], 16).unwrap();
+        Ok(format!("({}, {})",bi1.to_str_radix(10), bi2.to_str_radix(10)))
     }
     fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
         let eq = |a:&PyG1 ,b: &PyAny| {
@@ -614,7 +646,7 @@ impl PyObjectProtocol for PyG1 {
     }
 }
 
-#[pyclass(module = "pypairing")]
+#[pyclass(module = "pypairing", name = G2)]
 #[derive(Clone)]
 struct PyG2 {
    g2 : G2,
@@ -985,7 +1017,7 @@ impl PyObjectProtocol for PyG2 {
 }
 
 //#[pyclass]
-#[pyclass(module = "pypairing")]
+#[pyclass(module = "pypairing", name = ZR)]
 #[derive(Clone)]
 struct PyFr {
    fr : Fr
@@ -1070,7 +1102,10 @@ impl PyFr {
         Ok(())
     }
 
-    /// a.equals(b)
+    fn is_zero(&self) -> bool {
+        self.fr == Fr::zero()
+    }
+
     fn equals(&self, other: &PyFr) -> bool {
         self.fr == other.fr
     }
@@ -1165,11 +1200,59 @@ impl PyFr {
         }
         
     }
+    
+    #[staticmethod]
+    fn random(a: Option<Vec<u32>>) -> PyResult<PyFr> {
+        Ok(PyFr::rand(a)?)
+    }
 
 }
 
 #[pyproto]
 impl PyNumberProtocol for PyFr {
+    
+    fn __add__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let addend: BigInt = rhs.extract()?;
+            let pyfraddend = bigint_to_pyfr(&addend);
+            out.fr.add_assign(&pyfraddend.fr);
+        }
+        else{
+            let pyfraddend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.add_assign(&pyfraddend.fr);
+        }
+        Ok(out)
+    }
+    
+    fn __truediv__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let prodend: BigInt = rhs.extract()?;
+            let pyfrprodend = bigint_to_pyfr(&prodend);
+            let mut div = Fr::one();
+            div.clone_from(&pyfrprodend.fr);
+            div = div.inverse().unwrap();
+            out.fr.mul_assign(&div);
+        }
+        else{
+            let pyfrprodend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            let mut div = Fr::one();
+            div.clone_from(&pyfrprodend.fr);
+            div = div.inverse().unwrap();
+            out.fr.mul_assign(&div);
+        }
+        Ok(out)
+    }
+    
     fn __mul__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
         let mut out = PyFr{
             fr: Fr::one()
@@ -1187,7 +1270,54 @@ impl PyNumberProtocol for PyFr {
         }
         Ok(out)
     }
-    fn __add__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+    
+    fn __neg__(&self) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&self.fr);
+        out.fr.negate();
+        Ok(out)
+    }
+    
+    //TODO: this does not currently work in pyo3 if __mul__ is also defined. It's a current issue that will hopefully be resolved soon
+    /*fn __rmul__(&self, other: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&self.fr);
+        let rhscel = &other.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let prodend: BigInt = other.extract()?;
+            let pyfrprodend = bigint_to_pyfr(&prodend);
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        else{
+            let pyfrprodend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        Ok(out)
+    }*/
+    //fn __int__(&self) -> PyResult<&'p PyLong> {
+    fn __int__(&self) -> PyResult<BigInt> {
+        let hex = self.fr.to_string();
+        let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
+        //Ok(bi.to_str_radix(10))
+        Ok(bi)
+    }
+    
+    fn __pow__(lhs: PyFr, rhs: &PyAny, _mod: Option<&'p PyAny>) -> PyResult<PyFr> {
+        let expi: BigInt = rhs.extract()?;
+        let exp = bigint_to_pyfrexp(&expi);
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        out.pow_assign(&exp);
+        Ok(out)
+    }
+    
+    fn __sub__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
         let mut out = PyFr{
             fr: Fr::one()
         };
@@ -1196,11 +1326,11 @@ impl PyNumberProtocol for PyFr {
         if rhscel.is_err(){
             let addend: BigInt = rhs.extract()?;
             let pyfraddend = bigint_to_pyfr(&addend);
-            out.fr.add_assign(&pyfraddend.fr);
+            out.fr.sub_assign(&pyfraddend.fr);
         }
         else{
             let pyfraddend: &PyFr = &rhscel.as_ref().unwrap().borrow();
-            out.fr.add_assign(&pyfraddend.fr);
+            out.fr.sub_assign(&pyfraddend.fr);
         }
         Ok(out)
     }
@@ -1315,7 +1445,7 @@ impl PyFqRepr {
     }
 }
 
-#[pyclass(module = "pypairing")]
+#[pyclass(module = "pypairing", name = GT)]
 #[derive(Clone)]
 struct PyFq12 {
     fq12 : Fq12,
@@ -1654,7 +1784,7 @@ fn hashfrs(a: &PyList) -> PyResult<String>{
     Ok(format!("{}",text))
 }
 
-#[pyfunction]
+/*#[pyfunction]
 fn hashg1s(a: &PyList) -> PyResult<String>{
     //let mut string =  String::from("");
     let mut vec = Vec::new();
@@ -1675,11 +1805,98 @@ fn hashg1s(a: &PyList) -> PyResult<String>{
     let result = hasher.result();
     let text = hex::encode(&result[..]);
     Ok(format!("{}",text))
+}*/
+
+//TODO: Optimizing: 1)See if Serde can give you the byte structure you want 2) call batch_normalization
+#[pyfunction]
+fn hashg1s(mut a: Vec<PyG1>) -> PyResult<String>{
+    let mut hasher = Sha256::new();
+    for point in a {
+        let fqrx = FqRepr::from(point.g1.into_affine().x);
+        let arr = fqrx.as_ref();
+        for num in arr {
+            hasher.input(num.to_be_bytes());
+        }
+    }
+    let result = hasher.result();
+    let text = hex::encode(&result[..]);
+    Ok(format!("{}",text))
 }
 
 #[pyfunction]
-fn dotprod(output: &mut PyFr, a: &PyList, b: &PyList) -> PyResult<()>{
-    output.fr.clone_from(&Fr::zero());
+fn hashg1sbn(mut a: Vec<PyG1>) -> PyResult<String>{
+    let mut hasher = Sha256::new();
+    pyg1_batch_normalization(&mut a);
+    for point in &a {
+        let fqrx = FqRepr::from(point.g1.into_affine().x);
+        let arr = fqrx.as_ref();
+        for num in arr {
+            hasher.input(num.to_be_bytes());
+        }
+    }
+    let result = hasher.result();
+    let text = hex::encode(&result[..]);
+    Ok(format!("{}",text))
+}
+
+fn pyg1_batch_normalization(v: &mut [PyG1]) {
+                // Montgomery’s Trick and Fast Implementation of Masked AES
+                // Genelle, Prouff and Quisquater
+                // Section 3.2
+
+                // First pass: compute [a, ab, abc, ...]
+                let mut prod = Vec::with_capacity(v.len());
+                let mut tmp = Fq::one();
+                for g in v
+                    .iter_mut()
+                    // Ignore normalized elements
+                    .filter(|g| !g.g1.is_normalized())
+                {
+                    tmp.mul_assign(&g.g1.z);
+                    prod.push(tmp);
+                }
+
+                // Invert `tmp`.
+                tmp = tmp.inverse().unwrap(); // Guaranteed to be nonzero.
+
+                // Second pass: iterate backwards to compute inverses
+                for (g, s) in v
+                    .iter_mut()
+                    // Backwards
+                    .rev()
+                    // Ignore normalized elements
+                    .filter(|g| !g.g1.is_normalized())
+                    // Backwards, skip last element, fill in one for last term.
+                    .zip(
+                        prod.into_iter()
+                            .rev()
+                            .skip(1)
+                            .chain(Some(Fq::one())),
+                    )
+                {
+                    // tmp := tmp * g.z; g.z := tmp * s = 1/z
+                    let mut newtmp = tmp;
+                    newtmp.mul_assign(&g.g1.z);
+                    g.g1.z = tmp;
+                    g.g1.z.mul_assign(&s);
+                    tmp = newtmp;
+                }
+
+                // Perform affine transformations
+                for g in v.iter_mut().filter(|g| !g.g1.is_normalized()) {
+                    let mut z = g.g1.z; // 1/z
+                    z.square(); // 1/z^2
+                    g.g1.x.mul_assign(&z); // x/z^2
+                    z.mul_assign(&g.g1.z); // 1/z^3
+                    g.g1.y.mul_assign(&z); // y/z^3
+                    g.g1.z = Fq::one(); // z = 1
+                }
+}
+
+
+#[pyfunction]
+fn dotprod(a: &PyList, b: &PyList) -> PyResult<PyFr>{
+    let mut output = PyFr{ fr: Fr::zero()};
     let mut temp = Fr::zero();
     for (ai, bi) in a.iter().zip(b){
         //let aif: &PyFr = ai.try_into().unwrap();
@@ -1692,7 +1909,7 @@ fn dotprod(output: &mut PyFr, a: &PyList, b: &PyList) -> PyResult<()>{
         temp.mul_assign(&bif.fr);
         output.fr.add_assign(&temp);
     }
-    Ok(())
+    Ok(output)
 }
 
 #[pyfunction]
@@ -1779,6 +1996,26 @@ fn bigint_to_pyfr(bint: &BigInt) -> PyFr {
     mypyfr
 }
 
+fn bigint_to_pyfrexp(bint: &BigInt) -> PyFr {
+    let bls12_381_r = BigInt::new(Sign::Plus, vec![0u32,4294967295u32,4294859774u32,1404937218u32,161601541u32,859428872u32,698187080u32,1944954707u32]);
+    let mut uint = bint % &bls12_381_r;
+    // The % in rust is not modulo, it's remainder!
+    if uint < BigInt::from(0u8) {
+        uint += &bls12_381_r;
+    }
+    //BigInts only serialize/deserialize into Vec<u32>, while Fr only works with Vec<u64>
+    //They are not cross compatible ヽ(ಠ_ಠ)ノ
+    let s1 = &uint % 2u128.pow(64);
+    let s2 = (&uint >> 64) % 2u128.pow(64);
+    let s3: BigInt = (&uint >> 128) % 2u128.pow(64);
+    let s4: BigInt = &uint >> 192;
+    let myfr = Fr::from_repr(FrRepr([s1.to_u64().unwrap(),s2.to_u64().unwrap(),s3.to_u64().unwrap(),s4.to_u64().unwrap()])).unwrap();
+    let mypyfr = PyFr{
+        fr: myfr
+    };
+    mypyfr
+}
+
 fn swap_seed_format(inarr: [u32;8]) -> [u8;32] {
     let mut out: [u8;32] = [0; 32];
     for i in 0..8 {
@@ -1808,6 +2045,23 @@ fn pyfr_from_pyany(any: &PyAny) -> PyResult<PyFr> {
     Ok(out)
 }
 
+fn pyfr_from_pyanyexp(any: &PyAny) -> PyResult<PyFr> {
+    let mut out = PyFr{
+        fr: Fr::one()
+    };
+    let anycel = &any.downcast::<PyCell<PyFr>>();
+    if anycel.is_err(){
+        let bi: BigInt = any.extract()?;
+        let mypyfr = bigint_to_pyfrexp(&bi);
+        out.fr = mypyfr.fr;
+    }
+    else{
+        let mypyfr: &PyFr = &anycel.as_ref().unwrap().borrow();
+        out.fr.clone_from(&mypyfr.fr);
+    }
+    Ok(out)
+}
+
 #[pymodule]
 fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyG1>()?;
@@ -1823,6 +2077,7 @@ fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(vec_sum))?;
     m.add_wrapped(wrap_pyfunction!(hashfrs))?;
     m.add_wrapped(wrap_pyfunction!(hashg1s))?;
+    m.add_wrapped(wrap_pyfunction!(hashg1sbn))?;
     m.add_wrapped(wrap_pyfunction!(dotprod))?;
     m.add_wrapped(wrap_pyfunction!(condense_list))?;
     Ok(())

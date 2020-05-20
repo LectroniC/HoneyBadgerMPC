@@ -112,6 +112,16 @@ def test_poly_interpolate_at_random(galois_field, polynomial):
 
 
 def test_rust_poly_eval_at_k(rust_field, rust_polynomial):
+    def mysum(iterable):
+        i = 0
+        for item in iterable:
+            if i == 0:
+                out = item*1
+            else:
+                out += item
+            i += 1
+        return out
+    
     poly1 = rust_polynomial([0, 1])  # y = x
     for i in range(10):
         assert poly1(i) == i
@@ -124,7 +134,7 @@ def test_rust_poly_eval_at_k(rust_field, rust_polynomial):
     coeffs = [rust_field.random() for i in range(d)]
     poly3 = rust_polynomial(coeffs)  # random polynomial of degree d
     x = rust_field.random()
-    y = sum([pow(x, i) * a for i, a in enumerate(coeffs)])
+    y = mysum([pow(x, i) * a for i, a in enumerate(coeffs)])
     assert y == poly3(x)
 
 

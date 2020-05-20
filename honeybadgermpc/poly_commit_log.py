@@ -1,11 +1,15 @@
-from honeybadgermpc.betterpairing import ZR, G1
+#from honeybadgermpc.betterpairing import ZR, G1
+from pypairing import ZR, G1
 from honeybadgermpc.proofs import (
     prove_inner_product_one_known,
     verify_inner_product_one_known,
     prove_batch_inner_product_one_known,
     verify_batch_inner_product_one_known,
     prove_double_batch_inner_product_one_known,
+    prove_double_batch_inner_product_one_known_but_different,
+    prove_double_batch_inner_product_one_known_but_differenter,
     verify_double_batch_inner_product_one_known,
+    verify_double_batch_inner_product_one_known_but_differenter,
     MerkleTree,
 )
 import pickle
@@ -23,7 +27,7 @@ class PolyCommitLog:
         self.y_vecs = []
 
     def commit(self, phi, r):
-        c = G1.one()
+        c = G1.identity()
         for i in range(len(phi.coeffs)):
             c *= self.gs[i] ** phi.coeffs[i]
         c *= self.h ** r
@@ -34,7 +38,7 @@ class PolyCommitLog:
         y_vec = [ZR(i) ** j for j in range(t + 1)]
         s_vec = [ZR.random() for _ in range(t + 1)]
         sy_prod = ZR(0)
-        S = G1.one()
+        S = G1.identity()
         for j in range(t + 1):
             S *= self.gs[j] ** s_vec[j]
             sy_prod += s_vec[j] * y_vec[j]
@@ -44,7 +48,7 @@ class PolyCommitLog:
         # Fiat Shamir
         challenge = ZR.hash(pickle.dumps([self.gs, self.h, self.u, S, T]))
         d_vec = [phi.coeffs[j] + s_vec[j] * challenge for j in range(t + 1)]
-        D = G1.one()
+        D = G1.identity()
         for j in range(t + 1):
             D *= self.gs[j] ** d_vec[j]
         mu = r + rho * challenge
@@ -65,7 +69,7 @@ class PolyCommitLog:
                 i += 1
         s_vec = [ZR.random() for _ in range(t + 1)]
         sy_prods = [ZR(0) for _ in range(n)]
-        S = G1.one()
+        S = G1.identity()
         T_vec = [None] * n
         witnesses = [[] for _ in range(n)]
         for i in range(t + 1):
@@ -87,7 +91,7 @@ class PolyCommitLog:
             witnesses[j].append(branch)
         challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
         d_vec = [phi.coeffs[j] + s_vec[j] * challenge for j in range(t + 1)]
-        D = G1.one()
+        D = G1.identity()
         for j in range(t + 1):
             D *= self.gs[j] ** d_vec[j]
         mu = r + rho * challenge
@@ -98,68 +102,134 @@ class PolyCommitLog:
             witnesses[j] += [S, T_vec[j], D, mu, t_hats[j], iproofs[j]]
         return witnesses
 
-    # Create witnesses for points 1 to n. n defaults to (3*degree+1) * len(phis) if unset.
+    # Create witnesses for points 1 to n. n defaults to 3*degree+1 if unset.
     # Comparing to batch_create_witness, this takes a list of phis and reuses challenges across
     # len(phis) * len(y_vecs) number of witnesses. The returned witnesses_2d is a list of lists
     # where witnesses_2d[i][j] returns the combination of phi_i on points j.
+    #@profile
     def double_batch_create_witness(self, phis, r, n=None):
         t = len(phis[0].coeffs) - 1
-        row_length = 3 * t + 1
+        numpolys = len(phis)
         if n is None:
-            # There are len(phis) * (3*degree+1) vectors in total.
-            n = row_length * len(phis)
-        if len(self.y_vecs) < row_length:
+            n = 3 * t + 1
+        numverifiers = n
+        if len(self.y_vecs) < numverifiers:
             i = len(self.y_vecs)
-            while i < row_length:
+            while i < numverifiers:
                 self.y_vecs.append([ZR(i + 1) ** j for j in range(t + 1)])
                 i += 1
         # length t
         s_vec = [ZR.random() for _ in range(t + 1)]
-        sy_prods = [ZR(0) for _ in range(row_length)]
-        S = G1.one()
-        T_vec = [None] * row_length
-        witnesses = [[] for _ in range(n)]
+        sy_prods = [ZR(0) for _ in range(numverifiers)]
+        S = G1.identity()
+        T_vec = [None] * numverifiers
+        witnesses = [[] for _ in range(numpolys * numverifiers)]
         for i in range(t + 1):
-            S *= self.gs[i] ** s_vec[i]
-        for j in range(row_length):
+            S *= self.gs[i].pow(s_vec[i])
+        for j in range(numverifiers):
             for i in range(t + 1):
                 sy_prods[j] += s_vec[i] * self.y_vecs[j][i]
-            T_vec[j] = self.gs[0] ** sy_prods[j]
+            T_vec[j] = self.gs[0].pow(sy_prods[j])
         rho = ZR.random()
         S *= self.h ** rho
         # Fiat Shamir
         tree = MerkleTree()
-        for j in range(row_length):
+        for j in range(numverifiers):
             tree.append(pickle.dumps(T_vec[j]))
         roothash = tree.get_root_hash()
         for i in range(len(phis)):
-            for j in range(row_length):
+            for j in range(numverifiers):
                 branch = tree.get_branch(j)
-                witnesses[i * row_length + j].append(roothash)
-                witnesses[i * row_length + j].append(branch)
+                witnesses[i * numverifiers + j].append(roothash)
+                witnesses[i * numverifiers + j].append(branch)
         challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
         d_vecs = []
         for i in range(len(phis)):
             d_vecs.append([phis[i].coeffs[j] + s_vec[j] * challenge for j in range(t + 1)])
-        Ds = [G1.one() for _ in range(len(phis))]
+        Ds = [G1.identity() for _ in range(len(phis))]
         for i in range(len(phis)):
             for j in range(t + 1):
-                Ds[i] *= self.gs[j] ** d_vecs[i][j]
+                Ds[i] *= self.gs[j].pow(d_vecs[i][j])
         mu = r + rho * challenge
         comms, t_hats, iproofs = prove_double_batch_inner_product_one_known(
             d_vecs, self.y_vecs, crs=[self.gs, self.u]
         )
-        for i in range(len(witnesses) // (row_length)):
-            for j in range(row_length):
-                abs_idx = i * row_length + j
+        for i in range(len(witnesses) // (numverifiers)):
+            for j in range(numverifiers):
+                abs_idx = i * numverifiers + j
                 witnesses[abs_idx] += [S, T_vec[j], Ds[i], mu, t_hats[abs_idx], iproofs[i][j]]
         # Transform witnesses into a better structured 2D array.
         witnesses_2d = []
-        for i in range(len(witnesses) // row_length):
+        for i in range(len(witnesses) // numverifiers):
             witnesses_2d.append([])
-            for j in range(row_length):
-                witnesses_2d[i].append(witnesses[i * row_length + j])
+            for j in range(numverifiers):
+                witnesses_2d[i].append(witnesses[i * numverifiers + j])
         return witnesses_2d
+
+    #@profile
+    def double_batch_create_witness_but_differenter(self, phis, r, n=None):
+        t = len(phis[0].coeffs) - 1
+        numpolys = len(phis)
+        if n is None:
+            n = 3 * t + 1
+        numverifiers = n
+        if len(self.y_vecs) < numverifiers:
+            i = len(self.y_vecs)
+            while i < numverifiers:
+                self.y_vecs.append([ZR(i + 1) ** j for j in range(t + 1)])
+                i += 1
+        # length t
+        s_vec = [ZR.random() for _ in range(t + 1)]
+        sy_prods = [ZR(0) for _ in range(numverifiers)]
+        S = G1.identity()
+        T_vec = [None] * numverifiers
+        witnesses = [[] for _ in range(numverifiers)]
+        for i in range(t + 1):
+            S *= self.gs[i].pow(s_vec[i])
+        for j in range(numverifiers):
+            for i in range(t + 1):
+                sy_prods[j] += s_vec[i] * self.y_vecs[j][i]
+            T_vec[j] = self.gs[0].pow(sy_prods[j])
+        rho = ZR.random()
+        S *= self.h ** rho
+        # Fiat Shamir
+        tree = MerkleTree()
+        for j in range(numverifiers):
+            tree.append(pickle.dumps(T_vec[j]))
+        roothash = tree.get_root_hash()
+        #for i in range(len(phis)):
+        for j in range(numverifiers):
+            branch = tree.get_branch(j)
+            witnesses[j].append(roothash)
+            witnesses[j].append(branch)
+        challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
+        d_vecs = []
+        for i in range(len(phis)):
+            d_vecs.append([phis[i].coeffs[j] + s_vec[j] * challenge for j in range(t + 1)])
+        Ds = [G1.identity() for _ in range(len(phis))]
+        #for i in range(len(phis)):
+        #    for j in range(t + 1):
+        #        Ds[i] *= self.gs[j].pow(d_vecs[i][j])
+        _ = [ [ Ds[i].__imul__(self.gs[j].pow(d_vecs[i][j])) for j in range(t+1) ] for i in range(len(phis))]
+        mu = r + rho * challenge
+        comms, t_hats, iproofs = prove_double_batch_inner_product_one_known_but_differenter(
+            d_vecs, self.y_vecs, crs=[self.gs, self.u]
+        )
+        #for i in range(len(witnesses) // (numverifiers)):
+        #    for j in range(numverifiers):
+        #        abs_idx = i * numverifiers + j
+        #        witnesses[abs_idx] += [S, T_vec[j], Ds[i], mu, t_hats[abs_idx], iproofs[i][j]]
+        for j in range(numverifiers):
+            witnesses[j] += [t, S, T_vec[j], Ds, mu, t_hats[j], iproofs[j]]
+        return witnesses
+
+        # Transform witnesses into a better structured 2D array.
+        #witnesses_2d = []
+        #for i in range(len(witnesses) // numverifiers):
+        #    witnesses_2d.append([])
+        #    for j in range(numverifiers):
+        #        witnesses_2d[i].append(witnesses[i * numverifiers + j])
+        #return witnesses_2d
 
     def verify_eval(self, c, i, phi_at_i, witness):
         t = witness[-1][0] - 1
@@ -213,7 +283,24 @@ class PolyCommitLog:
         )
         return ret
 
-    def preprocess_prover(self, level=10):
+    def batch_verify_eval_but_differenter(self, cs, i, phis_at_i, witness):
+        [roothash, branch, t, S, T, Ds, mu, t_hats, proof] = witness
+        iproof, treeparts = proof
+        if not MerkleTree.verify_membership(pickle.dumps(T), branch, roothash):
+            return False
+        #TODO: Should include cs
+        challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
+        y_vec = [ZR(i) ** j for j in range(t + 1)]
+        ret = True
+        for j in range(len(Ds)):
+            ret &= self.gs[0] ** t_hats[j] == self.gs[0] ** phis_at_i[j] * T ** challenge
+            ret &= Ds[j] * self.h ** mu == S ** challenge * cs[j]
+        ret &= verify_double_batch_inner_product_one_known_but_differenter(
+            Ds, t_hats, y_vec, iproof, treeparts, crs=[self.gs, self.u]
+        )
+        return ret
+ 
+    def preprocess_prover(self, level=11):
         self.u.preprocess(level)
         # 0 to length-1
         for i in range(len(self.gs) - 1):
