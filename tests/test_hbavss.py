@@ -546,13 +546,12 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
             witnesses = self.poly_commit.double_batch_create_witness(phi, r)
             for i in range(n):
                 shared_key = pow(self.public_keys[i], ephemeral_secret_key)
-                z = [None] * secret_count
-                for k in range(secret_count):
-                    if i == fault_n and k == fault_k:
-                        z[k] = (ZR.random(), witnesses[k][i])
-                    else:
-                        z[k] = (phi[k](i + 1), witnesses[k][i])
+                phis_i = [ phi[k](i + 1) for k in range(batch_size)]
+                if i == fault_n:
+                    phis_i[fault_k] = ZR.random()
+                z = (phis_i, witnesses[i])
                 zz = SymmetricCrypto.encrypt(str(shared_key).encode(), z)
+                dispersal_msg_list[i] = zz
                 dispersal_msg_list[i] = zz
 
             return dumps((commitments, ephemeral_public_key)), dispersal_msg_list
