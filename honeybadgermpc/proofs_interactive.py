@@ -1,4 +1,5 @@
-from honeybadgermpc.betterpairing import ZR, G1
+#from honeybadgermpc.betterpairing import ZR, G1
+from pypairing import ZR, G1
 from honeybadgermpc.proofs import MerkleTree
 import pickle
 import math
@@ -17,17 +18,17 @@ class inner_product_prover:
         n = len(a_vec)
         assert len(b_vec) == n
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
-            h_vec = G1.hash(b"honeybadgerh", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
+            h_vec = G1.hash_many(b"honeybadgerh", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, h_vec, u] = crs
             g_vec = g_vec[:n]
             h_vec = h_vec[:n]
         if comm is not None:
-            P = comm * G1.one()
+            P = comm * G1.identity()
         else:
-            comm = G1.one()
+            comm = G1.identity()
             for i in range(n):
                 comm *= g_vec[i] ** a_vec[i] * h_vec[i] ** b_vec[i]
         iprod = ZR(0)
@@ -43,7 +44,7 @@ class inner_product_prover:
 
         proofStep = []
         if n % 2 == 1:
-            na, nb = -1 * a_vec[-1], -1 * b_vec[-1]
+            na, nb =  a_vec[-1] * -1, b_vec[-1] * -1
             P *= g_vec[-1] ** (na) * h_vec[-1] ** (nb) * u ** (-na * nb)
             proofStep.append(na)
             proofStep.append(nb)
@@ -51,8 +52,8 @@ class inner_product_prover:
         n_p = n // 2
         cl = ZR(0)
         cr = ZR(0)
-        L = G1.one()
-        R = G1.one()
+        L = G1.identity()
+        R = G1.identity()
         for i in range(n_p):
             cl += a_vec[:n_p][i] * b_vec[n_p:][i]
             cr += a_vec[n_p:][i] * b_vec[:n_p][i]
@@ -66,7 +67,7 @@ class inner_product_prover:
         await self.send_queue.put(proofStep)
         x = await self.receive_queue.get()
 
-        xi = 1 / x
+        xi = x**-1
         g_vec_p, h_vec_p, a_vec_p, b_vec_p = [], [], [], []
         for i in range(n_p):
             g_vec_p.append(g_vec[:n_p][i] ** xi * g_vec[n_p:][i] ** x)
@@ -88,8 +89,8 @@ class inner_product_verifier:
 
     def set_up_params(self, n, P, crs=None):
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
-            h_vec = G1.hash(b"honeybadgerh", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
+            h_vec = G1.hash_many(b"honeybadgerh", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, h_vec, u] = crs
@@ -106,7 +107,7 @@ class inner_product_verifier:
             [L, R] = await self.receive_queue.get()
         x = ZR.random()
         await self.send_queue.put(x)
-        xi = 1 / x
+        xi = x**-1
         n_p = n // 2
         g_vec_p = []
         h_vec_p = []
@@ -128,7 +129,7 @@ class inner_product_one_known_prover:
         n = len(a_vec)
         assert len(b_vec) == n
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, u] = crs
@@ -188,7 +189,7 @@ class inner_product_one_known_verifier:
 
     def set_up_params(self, b_vec, n, P, crs=None):
         if crs is None:
-            g_vec = G1.hash(b"honeybadgerg", length=n)
+            g_vec = G1.hash_many(b"honeybadgerg", n)
             u = G1.hash(b"honeybadgeru")
         else:
             [g_vec, u] = crs

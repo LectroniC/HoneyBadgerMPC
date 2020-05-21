@@ -6,7 +6,8 @@ from itertools import zip_longest
 from honeybadgermpc.ntl import fft as fft_cpp
 from honeybadgermpc.ntl import fft_interpolate as fft_interpolate_cpp
 
-from .betterpairing import ZR
+from .betterpairing import ZR as bpZR
+from pypairing import ZR
 from .elliptic_curve import Subgroup
 from .field import GF, GFElement
 
@@ -23,9 +24,22 @@ def strip_trailing_zeros(a):
 _poly_cache = {}
 
 
+#Need to redefine this for now until __radd__ is implementable for ZR
+#basically, sum starts with int(0) + iterable[0], which causes problems
+def mysum(iterable):
+    i = 0
+    for item in iterable:
+        if i == 0:
+            out = item*1
+        else:
+            out += item
+        i += 1
+    return out
+
+
 def polynomials_over(field):
-    assert type(field) is GF or field == ZR
-    field_type = GFElement if type(field) is GF else ZR
+    assert type(field) is GF or field == ZR or field == bpZR
+    field_type = GFElement if type(field) is GF else field
     if field in _poly_cache:
         return _poly_cache[field]
 
@@ -72,10 +86,16 @@ def polynomials_over(field):
             vector = []
             for i, x_i in enumerate(xs):
                 factors = [
-                    (x_k - x_recomb) / (x_k - x_i) for k, x_k in enumerate(xs) if k != i
+                    #(x_k - x_recomb) / (x_k - x_i) for k, x_k in enumerate(xs) if k != i
+                    (x_recomb - x_k) / (x_i - x_k) for k, x_k in enumerate(xs) if k != i
                 ]
                 vector.append(reduce(operator.mul, factors))
-            return sum(map(operator.mul, ys, vector))
+            #return sum(map(operator.mul, ys, vector))
+            #sum = field(0)
+            #for i in map(operator.mul, vector, ys):
+                #sum += i
+            return mysum(map(operator.mul, vector, ys))
+            #return sum
 
         _lagrange_cache = {}  # Cache lagrange polynomials
 
@@ -91,11 +111,13 @@ def polynomials_over(field):
                     return cls._lagrange_cache[(xs, xi)]
 
                 def mul(a, b):
+                    #return a * b
                     return a * b
 
                 num = reduce(mul, [x - cls([xj]) for xj in xs if xj != xi], one)
                 den = reduce(mul, [xi - xj for xj in xs if xj != xi], field(1))
-                p = num * cls([1 / den])
+                #p = num * cls([1 / den])
+                p = num / den
                 cls._lagrange_cache[(xs, xi)] = p
                 return p
 
@@ -193,7 +215,7 @@ def polynomials_over(field):
 
         def __add__(self, other):
             new_coefficients = [
-                sum(x) for x in zip_longest(self, other, fillvalue=self.field(0))
+                mysum(x) for x in zip_longest(self, other, fillvalue=self.field(0))
             ]
             return Polynomial(new_coefficients)
 
@@ -234,6 +256,11 @@ def polynomials_over(field):
         def __truediv__(self, divisor):
             if divisor.is_zero():
                 raise ZeroDivisionError
+            if type(divisor) is field_type:
+                prodend = divisor ** -1
+                prod_poly = self.__class__([prodend])
+                return self * prod_poly
+            # Todo: Dividing by a degree 0 polynomial causes an infinite loop
             return divmod(self, divisor)[0]
 
         def __mod__(self, divisor):

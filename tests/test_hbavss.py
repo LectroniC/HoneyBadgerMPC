@@ -4,7 +4,7 @@ from contextlib import ExitStack
 from pickle import dumps
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_const import gen_pc_const_crs
-from honeybadgermpc.betterpairing import G1, ZR
+#from honeybadgermpc.betterpairing import G1, ZR
 from honeybadgermpc.hbavss import HbAvssLight, HbAvssBatch, HbAvssBatchLoglin
 from honeybadgermpc.mpc import TaskProgramRunner
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
@@ -15,6 +15,16 @@ import asyncio
 
 
 def get_avss_params(n, t):
+    from honeybadgermpc.betterpairing import G1, ZR
+    g, h = G1.rand(), G1.rand()
+    public_keys, private_keys = [None] * n, [None] * n
+    for i in range(n):
+        private_keys[i] = ZR.random()
+        public_keys[i] = pow(g, private_keys[i])
+    return g, h, public_keys, private_keys
+
+def get_avss_params_pyp(n, t):
+    from pypairing import G1, ZR
     g, h = G1.rand(), G1.rand()
     public_keys, private_keys = [None] * n, [None] * n
     for i in range(n):
@@ -24,6 +34,7 @@ def get_avss_params(n, t):
 
 @mark.asyncio
 async def test_hbavss_batch(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -65,10 +76,11 @@ async def test_hbavss_batch(test_router):
 
 @mark.asyncio
 async def test_hbavss_loglin(test_router):
+    from pypairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
-    g, h, pks, sks = get_avss_params(n, t)
+    g, h, pks, sks = get_avss_params_pyp(n, t)
     sends, recvs, _ = test_router(n)
     # TODO: add configurable crs specifically for poly_commit_log
     crs = [g]
@@ -108,6 +120,7 @@ async def test_hbavss_loglin(test_router):
 
 @mark.asyncio
 async def test_hbavss_light(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -143,6 +156,7 @@ async def test_hbavss_light(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_gf(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -181,6 +195,7 @@ async def test_hbavss_light_gf(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_share_fault(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     # Injects one invalid share
     class BadDealer(HbAvssLight):
         def _get_dealer_msg(self, value):
@@ -243,6 +258,7 @@ async def test_hbavss_light_share_fault(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_encryption_fault(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     # Injects one undecryptable ciphertext
     class BadDealer(HbAvssLight):
         def _get_dealer_msg(self, value):
@@ -305,6 +321,7 @@ async def test_hbavss_light_encryption_fault(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_batch(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
     batchsize = 50
@@ -347,6 +364,7 @@ async def test_hbavss_light_batch(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_batch_share_fault(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     class BadDealer(HbAvssLight):
         def _get_dealer_msg(self, value):
             if type(value) in (list, tuple):
@@ -426,6 +444,7 @@ async def test_hbavss_light_batch_share_fault(test_router):
 
 @mark.asyncio
 async def test_hbavss_batch_share_fault(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     # Injects one invalid share
     class BadDealer(HbAvssBatch):
         def _get_dealer_msg(self, values, n):
@@ -499,6 +518,7 @@ async def test_hbavss_batch_share_fault(test_router):
 
 @mark.asyncio
 async def test_hbavss_batch_loglin_share_fault(test_router):
+    from pypairing import G1, ZR
     # Injects one invalid share
     class BadDealer(HbAvssBatchLoglin):
         def _get_dealer_msg(self, values, n, batch_size):
@@ -526,13 +546,12 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
             witnesses = self.poly_commit.double_batch_create_witness(phi, r)
             for i in range(n):
                 shared_key = pow(self.public_keys[i], ephemeral_secret_key)
-                z = [None] * secret_count
-                for k in range(secret_count):
-                    if i == fault_n and k == fault_k:
-                        z[k] = (ZR.random(), witnesses[k][i])
-                    else:
-                        z[k] = (phi[k](i + 1), witnesses[k][i])
+                phis_i = [ phi[k](i + 1) for k in range(batch_size)]
+                if i == fault_n:
+                    phis_i[fault_k] = ZR.random()
+                z = (phis_i, witnesses[i])
                 zz = SymmetricCrypto.encrypt(str(shared_key).encode(), z)
+                dispersal_msg_list[i] = zz
                 dispersal_msg_list[i] = zz
 
             return dumps((commitments, ephemeral_public_key)), dispersal_msg_list
@@ -540,7 +559,7 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
     t = 2
     n = 3 * t + 1
 
-    g, h, pks, sks = get_avss_params(n, t)
+    g, h, pks, sks = get_avss_params_pyp(n, t)
     sends, recvs, _ = test_router(n)
     # TODO: add configurable crs specifically for poly_commit_log
     crs = [g]
@@ -582,6 +601,7 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
 @mark.asyncio
 # Send t parties entirely faulty messages
 async def test_hbavss_batch_t_share_faults(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     class BadDealer(HbAvssBatch):
         def _get_dealer_msg(self, values, n):
             # return super(BadDealer, self)._get_dealer_msg(values)
@@ -661,6 +681,7 @@ async def test_hbavss_batch_t_share_faults(test_router):
 
 @mark.asyncio
 async def test_hbavss_batch_encryption_fault(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     class BadDealer(HbAvssBatch):
         def _get_dealer_msg(self, values, n):
             fault_n = randint(1, n - 1)
@@ -735,6 +756,7 @@ async def test_hbavss_batch_encryption_fault(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_client_mode(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -776,6 +798,7 @@ async def test_hbavss_light_client_mode(test_router):
 
 @mark.asyncio
 async def test_hbavss_batch_client_mode(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -823,6 +846,7 @@ async def test_hbavss_batch_client_mode(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_share_open(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -864,6 +888,7 @@ async def test_hbavss_light_share_open(test_router):
 
 @mark.asyncio
 async def test_hbavss_light_parallel_share_array_open(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
     k = 4
@@ -928,6 +953,7 @@ async def test_hbavss_light_parallel_share_array_open(test_router):
 
 @mark.asyncio
 async def test_hbavss_batch_batch(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 
@@ -970,6 +996,7 @@ async def test_hbavss_batch_batch(test_router):
 
 @mark.asyncio
 async def test_hbavss_batch_batch_gf(test_router):
+    from honeybadgermpc.betterpairing import G1, ZR
     t = 2
     n = 3 * t + 1
 

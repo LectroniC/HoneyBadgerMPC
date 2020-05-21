@@ -3,7 +3,7 @@ def test_zr_math():
 
     assert ZR("2") ** 3 == 8
     assert ZR(200) / 10 == ZR(20)
-    assert 4 + ZR(14) == 18
+    assert ZR(14) + 4 == 18
     assert ZR("0xa") - ZR(4) == 6
     a = ZR.random()
     assert a ** -3 * a ** -5 == a ** -8
@@ -21,7 +21,7 @@ def test_bilinear_math():
     assert pair(a ** i, b) == c ** i
     assert pair(a, b ** i) == c ** i
     assert pair(a ** i, b ** i) == c ** (i ** 2)
-    a.preprocess()
+    a.preprocess(8)
     b.preprocess(3)
     c.preprocess(5)
     i = ZR.random()
@@ -63,7 +63,7 @@ def test_hashing():
     from honeybadgermpc.betterpairing import ZR, G1, G2
     import pickle
 
-    crs = G1.hash(b"honeybadger", length=10) + G2.hash(b"honeybadger", length=2)
+    crs = G1.hash_many(b"honeybadger", 10) + G2.hash_many(b"honeybadger", 2)
     assert crs[0] != crs[1]
     assert type(crs[0]) is G1
     assert type(crs[11]) is G2

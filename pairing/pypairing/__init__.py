@@ -2,26 +2,26 @@
 from __future__ import absolute_import
 
 from .pypairing import (
-    PyG1,
-    PyFr,
-    PyG2,
-    py_pairing,
+    G1,
+    ZR,
+    G2,
     PyFq,
     PyFq2,
-    PyFq12,
+    GT,
     PyFqRepr,
     vec_sum,
     hashfrs,
     hashg1s,
+    hashg1sbn,
     dotprod,
-    condense_list
+    condense_list,
+    pair
 )
 
 __all__ = [
     "PyG1",
     "PyFr",
     "PyG2",
-    "py_pairing",
     "PyFq",
     "PyFq2",
     "PyFq12",
@@ -29,6 +29,8 @@ __all__ = [
     "vec_sum",
     "hashfrs",
     "hashg1s",
+    "hashg1sbn",
     "dotprod",
-    "condense_list"
+    "condense_list",
+    "pair"
 ]

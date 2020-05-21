@@ -11,7 +11,7 @@ from honeybadgermpc.proofs_interactive import (
     inner_product_prover,
     inner_product_verifier,
 )
-from honeybadgermpc.betterpairing import ZR, G1
+from pypairing import ZR, G1
 import asyncio
 
 

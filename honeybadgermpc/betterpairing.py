@@ -1,4 +1,4 @@
-﻿from pypairing import PyFq, PyFq2, PyFq12, PyFqRepr, PyG1, PyG2, PyFr, hashg1s, hashfrs, dotprod, condense_list
+﻿from pypairing import PyFq, PyFq2, GT as PyFq12, PyFqRepr, G1 as PyG1, G2 as PyG2, ZR as PyFr, hashg1s, hashfrs, dotprod, condense_list
 import random
 import re
 import struct
@@ -134,6 +134,9 @@ class G1:
         self.pyg1.ppmul(exponend.val, out.pyg1)
         return out
 
+    def pow(self, other):
+        return self.__pow__(other)
+
     def __ipow__(self, other):
         if type(other) is int:
             self.pyg1.mul_assign(ZR(other).val)
@@ -201,6 +204,10 @@ class G1:
         one = G1()
         one.pyg1.zero()
         return one
+    
+    @staticmethod
+    def identity():
+        return G1.one()
 
     @staticmethod
     def rand(seed=None):
@@ -209,21 +216,25 @@ class G1:
             seed = []
             for _ in range(8):
                 seed.append(random.SystemRandom().randint(0, 4294967295))
-            out.rand(seed)
+            out.randomize(seed)
         else:
             assert type(seed) is list
             assert len(seed) <= 8
-            out.rand(seed)
+            out.randomize(seed)
         return G1(out)
 
-    # length determines how many G1 values to return
     @staticmethod
-    def hash(bytestr, length=None):
+    def hash(bytestr):
         assert type(bytestr) is bytes
         hashout = sha256(bytestr).hexdigest()
         seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
-        if length is None:
-            return G1.rand(seed)
+        return G1.rand(seed)
+
+    @staticmethod
+    def hash_many(bytestr, length):
+        assert type(bytestr) is bytes
+        hashout = sha256(bytestr).hexdigest()
+        seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
         assert type(length) is int
         out = [G1.rand(seed)]
         for j in range(0, length - 1):
@@ -408,27 +419,35 @@ class G2:
         return one
 
     @staticmethod
+    def identity():
+        return G2.one()
+
+    @staticmethod
     def rand(seed=None):
         out = PyG2()
         if seed is None:
             seed = []
             for _ in range(8):
                 seed.append(random.SystemRandom().randint(0, 4294967295))
-            out.rand(seed)
+            out.randomize(seed)
         else:
             assert type(seed) is list
             assert len(seed) <= 8
-            out.rand(seed)
+            out.randomize(seed)
         return G2(out)
 
-    # length determines how many G2 values to return
     @staticmethod
-    def hash(bytestr, length=None):
+    def hash(bytestr):
         assert type(bytestr) is bytes
         hashout = sha256(bytestr).hexdigest()
         seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
-        if length is None:
-            return G2.rand(seed)
+        return G2.rand(seed)
+
+    @staticmethod
+    def hash_many(bytestr, length):
+        assert type(bytestr) is bytes
+        hashout = sha256(bytestr).hexdigest()
+        seed = [int(hashout[i : i + 8], 16) for i in range(0, 64, 8)]
         assert type(length) is int
         out = [G2.rand(seed)]
         for j in range(0, length - 1):
@@ -776,7 +795,11 @@ class ZR:
             # Generate pseudorandomly based on seed
             r = random.Random(seed).randint(0, r - 1)
             return ZR(str(r))
-
+    
+    @staticmethod
+    def rand(seed=None):
+        return ZR.random(seed)
+    
     @staticmethod
     def zero():
         return ZR(0)
@@ -848,8 +871,7 @@ def inner_product(zrlista, zrlistb):
     #for i in range(len(zrlista)):
     #    pyfrlista.append(zrlista[i].val)
     #    pyfrlistb.append(zrlistb[i].val)
-    out = ZR(0)
-    dotprod(out.val, pyfrlista, pyfrlistb)
+    out = ZR(dotprod(pyfrlista, pyfrlistb))
     return(out)
     
 

@@ -1,4 +1,6 @@
-from honeybadgermpc.betterpairing import ZR, G1, hashg1list, hashzrlist, hash_list_to_bytes, inner_product, precomp_list
+#from honeybadgermpc.betterpairing import ZR, G1, hashg1list, hashzrlist, hash_list_to_bytes, inner_product
+from pypairing import ZR, G1, hashg1s as hashg1list, hashfrs as hashzrlist, dotprod as inner_product, hashg1sbn as hashg1listbn
+from honeybadgermpc.betterpairing import hash_list_to_bytes
 import pickle
 import math
 import hashlib
@@ -66,12 +68,7 @@ class MerkleTree:
             else:
                 tmp = MerkleTree.hash(tmp + br)
             tindex >>= 1
-        if tmp == root_hash:
-            return True
-        print(tmp == root_hash)
-        print(tmp)
-        print(root_hash)
-        return False
+        return tmp == root_hash
 
 
 # Inner product (aka dot product) argument from Bulletproofs paper. Not zero knowledge!
@@ -84,15 +81,15 @@ def prove_inner_product(a_vec, b_vec, comm=None, crs=None):
             return proof
         proofstep = []
         if n % 2 == 1:
-            na, nb = -1 * a_vec[-1], -1 * b_vec[-1]
+            na, nb = a_vec[-1] * -1, b_vec[-1] * -1
             P *= g_vec[-1] ** (na) * h_vec[-1] ** (nb) * u ** (-na * nb)
             proofstep.append(na)
             proofstep.append(nb)
         n_p = n // 2
         cl = ZR(0)
         cr = ZR(0)
-        L = G1.one()
-        R = G1.one()
+        L = G1.identity()
+        R = G1.identity()
         for i in range(n_p):
             cl += a_vec[:n_p][i] * b_vec[n_p:][i]
             cr += a_vec[n_p:][i] * b_vec[:n_p][i]
@@ -104,7 +101,7 @@ def prove_inner_product(a_vec, b_vec, comm=None, crs=None):
         #transcript += pickle.dumps([g_vec, h_vec, u, P, L, R])
         transcript += pickle.dumps(hashg1list(g_vec + h_vec + [u, P, L, R]))
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         # this part must come after the challenge is generated, which must
         # come after L and R are calculated. Don't try to condense the loops
         g_vec_p, h_vec_p, a_vec_p, b_vec_p = [], [], [], []
@@ -125,17 +122,17 @@ def prove_inner_product(a_vec, b_vec, comm=None, crs=None):
     n = len(a_vec)
     assert len(b_vec) == n
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
-        h_vec = G1.hash(b"honeybadgerh", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        h_vec = G1.hash_many(b"honeybadgerh", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, h_vec, u] = crs
         g_vec = g_vec[:n]
         h_vec = h_vec[:n]
     if comm is not None:
-        P = comm * G1.one()
+        P = comm * G1.identity()
     else:
-        comm = G1.one()
+        comm = G1.identity()
         for i in range(n):
             comm *= g_vec[i] ** a_vec[i] * h_vec[i] ** b_vec[i]
     iprod = ZR(0)
@@ -163,7 +160,7 @@ def verify_inner_product(comm, iprod, proof, crs=None):
         #transcript += pickle.dumps([g_vec, h_vec, u, P, L, R])
         transcript += pickle.dumps(hashg1list(g_vec + h_vec + [u, P, L, R]))
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         n_p = n // 2
         g_vec_p = []
         h_vec_p = []
@@ -176,8 +173,8 @@ def verify_inner_product(comm, iprod, proof, crs=None):
     n = proof[0]
     iproof = proof[1:]
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
-        h_vec = G1.hash(b"honeybadgerh", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        h_vec = G1.hash_many(b"honeybadgerh", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, h_vec, u] = crs
@@ -195,14 +192,14 @@ def prove_inner_product_one_known(a_vec, b_vec, comm=None, crs=None):
             return proof
         proofstep = []
         if n % 2 == 1:
-            na = -1 * a_vec[-1]
+            na = a_vec[-1] * -1
             P *= g_vec[-1] ** (na) * u ** (na * b_vec[-1])
             proofstep.append(na)
         n_p = n // 2
         cl = ZR(0)
         cr = ZR(0)
-        L = G1.one()
-        R = G1.one()
+        L = G1.identity()
+        R = G1.identity()
         for i in range(n_p):
             cl += a_vec[:n_p][i] * b_vec[n_p:][i]
             cr += a_vec[n_p:][i] * b_vec[:n_p][i]
@@ -214,7 +211,7 @@ def prove_inner_product_one_known(a_vec, b_vec, comm=None, crs=None):
         #transcript += pickle.dumps([g_vec, u, P, L, R])
         transcript += pickle.dumps(hashg1list(g_vec + [u, P, L, R]))
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         # this part must come after the challenge is generated, which must
         # come after L and R are calculated. Don't try to condense the loops
         g_vec_p, a_vec_p, b_vec_p = [], [], []
@@ -232,15 +229,15 @@ def prove_inner_product_one_known(a_vec, b_vec, comm=None, crs=None):
     n = len(a_vec)
     assert len(b_vec) == n
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
         g_vec = g_vec[:n]
     if comm is not None:
-        P = comm * G1.one()
+        P = comm * G1.identity()
     else:
-        comm = G1.one()
+        comm = G1.identity()
         for i in range(n):
             comm *= g_vec[i] ** a_vec[i]
     iprod = ZR(0)
@@ -268,7 +265,7 @@ def verify_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
         #transcript += pickle.dumps([g_vec, u, P, L, R])
         transcript += pickle.dumps(hashg1list(g_vec + [u, P, L, R]))
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         n_p = n // 2
         g_vec_p = []
         b_vec_p = []
@@ -281,7 +278,7 @@ def verify_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
     n = proof[0]
     iproof = proof[1:]
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -302,15 +299,15 @@ def prove_batch_inner_product_one_known(a_vec, b_vecs, comm=None, crs=None):
             return proofs
         proofsteps = [[] for _ in range(len(b_vecs))]
         if n % 2 == 1:
-            na = -1 * a_vec[-1]
+            na = a_vec[-1] * -1
             for j in range(len(P_vec)):
                 P_vec[j] *= g_vec[-1] ** (na) * u ** (na * b_vecs[j][-1])
                 proofsteps[j].append(na)
         n_p = n // 2
         cl_vec = [ZR(0) for _ in range(len(b_vecs))]
         cr_vec = [ZR(0) for _ in range(len(b_vecs))]
-        La = G1.one()
-        Ra = G1.one()
+        La = G1.identity()
+        Ra = G1.identity()
         L_vec = [None] * len(b_vecs)
         R_vec = [None] * len(b_vecs)
         for i in range(n_p):
@@ -342,7 +339,7 @@ def prove_batch_inner_product_one_known(a_vec, b_vecs, comm=None, crs=None):
             proofsteps[j].append(branch)
         transcript += pickle.dumps([hashg1list(g_vec), roothash])
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         # this part must come after the challenge is generated, which must
         # come after L and R are calculated. Don't try to condense the loops
         g_vec_p, a_vec_p = [], []
@@ -366,13 +363,13 @@ def prove_batch_inner_product_one_known(a_vec, b_vecs, comm=None, crs=None):
 
     n = len(a_vec)
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
         g_vec = g_vec[:n]
     if comm is None:
-        comm = G1.one()
+        comm = G1.identity()
         for i in range(n):
             comm *= g_vec[i] ** a_vec[i]
     iprods = [ZR(0) for _ in range(len(b_vecs))]
@@ -394,10 +391,10 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
     def recursive_verify(g_vec, b_vec, u, proof, n, P, transcript):
         if n == 1:
             a, b = proof[0][0], b_vec[0]
-            return P == g_vec[0] ** a * u ** (a * b)
+            return P == g_vec[0] ** a * u.pow(a * b)
         if n % 2 == 1:
             [na, roothash, branch, L, R] = proof[-1]
-            P *= g_vec[-1] ** (na) * u ** (na * b_vec[-1])
+            P *= g_vec[-1] ** (na) * u.pow(na * b_vec[-1])
         else:
             [roothash, branch, L, R] = proof[-1]
         leaf = hash_list_to_bytes(
@@ -409,12 +406,12 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
             return False
         transcript += pickle.dumps([hashg1list(g_vec), roothash])
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         n_p = n // 2
         g_vec_p = []
         b_vec_p = []
         for i in range(n_p):
-            g_vec_p.append(g_vec[:n_p][i] ** xi * g_vec[n_p:][i] ** x)
+            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
             b_vec_p.append(b_vec[:n_p][i] * xi + b_vec[n_p:][i] * x)
         P_p = L ** (x * x) * P * R ** (xi * xi)
         return recursive_verify(g_vec_p, b_vec_p, u, proof[:-1], n_p, P_p, transcript)
@@ -422,12 +419,12 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
     n = proof[0]
     iproof = proof[1:]
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
         g_vec = g_vec[:n]
-    P = comm * u ** iprod
+    P = comm * u.pow(iprod)
     transcript = pickle.dumps(u)
     return recursive_verify(g_vec, b_vec, u, iproof, n, P, transcript)
 
@@ -439,6 +436,7 @@ def verify_batch_inner_product_one_known(comm, iprod, b_vec, proof, crs=None):
 # b_vecs is expanded first so that len(New b_vecs) = len(a_vecs) * len(b_vecs)
 # for the bullet proof helper function.
 
+#@profile
 def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=None):
     #@profile
     def recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript):
@@ -446,81 +444,66 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
         numproofs = len(P_vec)
         row_length = numproofs//len(a_vecs)
         col_length = numproofs//len(b_vecs)
-        precomp_list(g_vec, 5)
+        numverifiers = row_length
+        _ = [g.preprocess(5) for g in g_vec]
         if n == 1:
-            #proofs = [None] * len(b_vecs)
             proofs = [None] * numproofs
             for i in range(len(proofs) // row_length):
                 for j in range(row_length):
                     abs_idx = i * row_length + j
                     proofs[abs_idx] = [[a_vecs[i][0]]]
             return proofs
-        #proofsteps = [[] for _ in range(len(b_vecs))]
         proofsteps = [[] for _ in range(numproofs)]
         if n % 2 == 1:
-            #g_vec[-1].preprocess(7)
             for i in range(numproofs // row_length):
-                na = -1 * a_vecs[i][-1]
+                na = a_vecs[i][-1] * -1
+                gtail = g_vec[-1].pow(na)
                 for j in range(row_length):
                     abs_idx = i * row_length + j
-                    #P_vec[abs_idx] *= g_vec[-1] ** (na) * u ** (na * b_vecs[abs_idx][-1])
-                    P_vec[abs_idx] *= g_vec[-1] ** (na) * u ** (na * b_vecs[j][-1])
+                    P_vec[abs_idx] *= gtail * u.pow(na * b_vecs[j][-1])
                     proofsteps[abs_idx].append(na)
         n_p = n // 2
         cl_vec = [0 for _ in range(len(P_vecs))]
         cr_vec = [0 for _ in range(len(P_vecs))]
         L_vec = [None] * len(P_vecs)
         R_vec = [None] * len(P_vecs)
-        Las = [G1.one() for _ in range(len(a_vecs))]
-        Ras = [G1.one() for _ in range(len(a_vecs))]
+        Las = [G1.identity() for _ in range(len(a_vecs))]
+        Ras = [G1.identity() for _ in range(len(a_vecs))]
         for j in range(len(a_vecs)):
             for i in range(n_p):
-                Las[j] *= g_vec[n_p:][i] ** a_vecs[j][:n_p][i]
-                Ras[j] *= g_vec[:n_p][i] ** a_vecs[j][n_p:][i]
-        #for i in range(len(b_vecs) // row_length):
+                Las[j] *= g_vec[n_p:][i].pow(a_vecs[j][:n_p][i])
+                Ras[j] *= g_vec[:n_p][i].pow(a_vecs[j][n_p:][i])
         for i in range(numproofs // row_length):
             for j in range(row_length):
                 abs_idx = i * row_length + j
-                #for k in range(n_p):
-                #    cl_vec[abs_idx] += a_vecs[i][:n_p][k] * b_vecs[abs_idx][n_p:][k]
-                #    cr_vec[abs_idx] += a_vecs[i][n_p:][k] * b_vecs[abs_idx][:n_p][k]
-                
-                
-                #cl_vec[abs_idx] = inner_product(a_vecs[i][:n_p], b_vecs[abs_idx][n_p:2*n_p])
-                #cr_vec[abs_idx] = inner_product(a_vecs[i][n_p:2*n_p], b_vecs[abs_idx][:n_p])
                 cl_vec[abs_idx] = inner_product(a_vecs[i][:n_p], b_vecs[j][n_p:2*n_p])
                 cr_vec[abs_idx] = inner_product(a_vecs[i][n_p:2*n_p], b_vecs[j][:n_p])
-                L_vec[abs_idx] = Las[i] * (u ** cl_vec[abs_idx])
-                R_vec[abs_idx] = Ras[i] * (u ** cr_vec[abs_idx])
+                L_vec[abs_idx] = Las[i] * (u.pow(cl_vec[abs_idx]))
+                R_vec[abs_idx] = Ras[i] * (u.pow(cr_vec[abs_idx]))
         # Fiat Shamir
         # Make a merkle tree over everything that varies between verifiers
         # TODO: na should be in the transcript
         tree = MerkleTree()
-        #for j in range(len(b_vecs)):
         b_hashes = [hashzrlist(b_vecs[i]) for i in range(len(b_vecs))]
         leaves = [hash_list_to_bytes(
             [b_hashes[j%len(b_vecs)], hashg1list([P_vec[j], L_vec[j], R_vec[j]])]
             ) for j in range(numproofs)]
         tree.append_many(leaves)
-        #for j in range(len(P_vecs)):
-            #tree.append(pickle.dumps([b_vecs[j%len(b_vecs)], P_vec[j], L_vec[j], R_vec[j]]))
-        #    tree.append(hash_list_to_bytes([b_hashes[j%len(b_vecs)], hashg1list([P_vec[j], L_vec[j], R_vec[j]])]))
-            ##tree.append(str.encode(str(b_vecs[j]) + str(P_vec[j]) + str(L_vec[j]) + str(R_vec[j])))
         roothash = tree.get_root_hash()
-        #for j in range(len(b_vecs)):
+        #for h in range(numverifiers):
         for j in range(len(P_vecs)):
             branch = tree.get_branch(j)
             proofsteps[j].append(roothash)
             proofsteps[j].append(branch)
         transcript += pickle.dumps([hashg1list(g_vec), roothash])
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         # this part must come after the challenge is generated, which must
         # come after L and R are calculated. Don't try to condense the loops
         g_vec_p, a_vecs_p = [], []
         b_vecs_p = [[] for _ in range(len(b_vecs))]
         for i in range(n_p):
-            g_vec_p.append(g_vec[:n_p][i] ** xi * g_vec[n_p:][i] ** x)
+            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
         for k in range(len(a_vecs)):
             a_vecs_p.append([])
             for i in range(n_p):
@@ -530,7 +513,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
             #    b_vecs_p[j].append(b_vecs[j][:n_p][i] * xi + b_vecs[j][n_p:][i] * x)
             b_vecs_p[j] = [b_vecs[j][:n_p][i] * xi + b_vecs[j][n_p:][i] * x for i in range(n_p)]
         x2, xi2 = x * x, xi * xi
-        Lax2Raxi2s = [Las[i] ** x2 * Ras[i] ** xi2 for i in range(len(a_vecs))]
+        Lax2Raxi2s = [Las[i].pow(x2) * Ras[i].pow(xi2) for i in range(len(a_vecs))]
         #for i in range(numproofs // row_length):
         #    for j in range(row_length):
         #        abs_idx = i * row_length + j
@@ -538,7 +521,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
         xil = [x2, xi2]
         for i in range(numproofs):
             upow = inner_product(xil, [cl_vec[i], cr_vec[i]])
-            P_vec[i] *= Lax2Raxi2s[i//row_length] * u ** upow
+            P_vec[i] *= Lax2Raxi2s[i//row_length] * u.pow(upow)
         proofs = recursive_proofs(g_vec_p, a_vecs_p, b_vecs_p, u, n_p, P_vec, transcript)
         for j in range(len(proofs)):
             proofsteps[j].append(L_vec[j])
@@ -548,7 +531,7 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
 
     t = len(a_vecs[0])
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
@@ -556,9 +539,9 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
     if comms is None:
         comms = []
         for j in range(len(a_vecs)):
-            comms.append(G1.one())
+            comms.append(G1.identity())
             for i in range(t):
-                comms[j] *= g_vec[i] ** a_vecs[j][i]
+                comms[j] *= g_vec[i].pow(a_vecs[j][i])
 
     iprods = [ZR(0) for _ in range(len(b_vecs)*len(a_vecs))]
     P_vecs = [None] * (len(b_vecs) * len(a_vecs))
@@ -570,15 +553,10 @@ def prove_double_batch_inner_product_one_known(a_vecs, b_vecs, comms=None, crs=N
             #for k in range(t):
             #    iprods[abs_idx] += a_vecs[i][k] * b_vecs[j][k]
             iprods[abs_idx] = inner_product(a_vecs[i], b_vecs[j])
-            P_vecs[abs_idx] = comms[i] * u ** iprods[abs_idx]
+            P_vecs[abs_idx] = comms[i] * u.pow(iprods[abs_idx])
     transcript = pickle.dumps(u)
     proofsize = len(a_vecs) * len(b_vecs)
     i = 0
-    #b_vecs_p = []
-    #while i < proofsize:
-    #    b_vecs_p.append(b_vecs[i % len(b_vecs)])
-    #    i += 1
-    #proofs = recursive_proofs(g_vec, a_vecs, b_vecs_p, u, t, P_vecs, transcript)
     proofs = recursive_proofs(g_vec, a_vecs, b_vecs, u, t, P_vecs, transcript)
     for j in range(len(proofs)):
         proofs[j].insert(0, t)
@@ -598,7 +576,7 @@ def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, cr
             ret = True
             for i in range(len(proofs)):
                 a, b = proofs[i][0][0], b_vec[0]
-                ret &= Ps[i] == g_vec[0] ** a * u ** (a * b)
+                ret &= Ps[i] == g_vec[0].pow(a) * u.pow(a * b)
             return ret
         Ls = []
         Rs = []
@@ -607,7 +585,7 @@ def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, cr
         if n % 2 == 1:
             for i in range(len(proofs)):
                 [na, roothash, branch, L, R] = proofs[i][-1]
-                Ps[i] *= g_vec[-1] ** (na) * u ** (na * b_vec[-1])
+                Ps[i] *= g_vec[-1].pow(na) * u.pow(na * b_vec[-1])
                 Ls.append(L)
                 Rs.append(R)
                 branches.append(branch)
@@ -636,14 +614,14 @@ def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, cr
                 return False
         transcript += pickle.dumps([hashg1list(g_vec), last_roothash])
         x = ZR.hash(transcript)
-        xi = 1 / x
+        xi = x ** -1
         x2 = x*x
         xi2 = xi*xi
         n_p = n // 2
         g_vec_p = []
         b_vec_p = []
         for i in range(n_p):
-            g_vec_p.append(g_vec[:n_p][i] ** xi * g_vec[n_p:][i] ** x)
+            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
             b_vec_p.append(b_vec[:n_p][i] * xi + b_vec[n_p:][i] * x)
         Ps_p = []
         for i in range(len(proofs)):
@@ -658,13 +636,373 @@ def verify_double_batch_inner_product_one_known(comms, iprods, b_vec, proofs, cr
     for i in range(len(proofs)):
         iproofs.append(proofs[i][1:])
     if crs is None:
-        g_vec = G1.hash(b"honeybadgerg", length=n)
+        g_vec = G1.hash_many(b"honeybadgerg", n)
         u = G1.hash(b"honeybadgeru")
     else:
         [g_vec, u] = crs
         g_vec = g_vec[:n]
     Ps = []
     for i in range(len(comms)):
-        Ps.append(comms[i] * u ** iprods[i])
+        Ps.append(comms[i] * u.pow(iprods[i]))
     transcript = pickle.dumps(u)
     return recursive_verify(g_vec, b_vec, u, iproofs, n, Ps, transcript)
+
+
+def prove_double_batch_inner_product_one_known_but_different(a_vecs, b_vecs, comms=None, crs=None):
+    def recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript):
+        #row_length = len(b_vecs)//len(a_vecs)
+        numproofs = len(a_vecs) * len(b_vecs)
+        row_length = numproofs//len(a_vecs)
+        col_length = numproofs//len(b_vecs)
+        numverifiers = len(b_vecs)
+        numpolys = len(a_vecs)
+        _ = [g.preprocess(5) for g in g_vec]
+        if n == 1:
+            #proofs = [None] * numproofs
+            #for i in range(len(proofs) // row_length):
+            #    for j in range(row_length):
+            #        abs_idx = i * row_length + j
+            #        proofs[abs_idx] = [[a_vecs[i][0]]]
+            #return proofs
+            proofs = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+            for i in range(numpolys):
+                for j in range(numverifiers):
+                    proofs[j][i] = [[a_vecs[i][0]]]
+            #proofs = [[a_vecs[:][0]]] * numverifiers
+            return proofs
+        #proofsteps = [[] for _ in range(numproofs)]
+        proofsteps = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        if n % 2 == 1:
+            for i in range(numpolys):
+                na = a_vecs[i][-1] * -1
+                gtail = g_vec[-1].pow(na)
+                for j in range(numverifiers):
+                    #abs_idx = i * row_length + j
+                    #P_vec[abs_idx] *= gtail * u.pow(na * b_vecs[j][-1])
+                    P_vec[j][i] *= gtail * u.pow(na * b_vecs[j][-1])
+                    #proofsteps[abs_idx].append(na)
+                    proofsteps[j][i].append(na)
+        n_p = n // 2
+        #cl_vec = [0 for _ in range(len(P_vecs))]
+        #cr_vec = [0 for _ in range(len(P_vecs))]
+        #L_vec = [None] * len(P_vecs)
+        #R_vec = [None] * len(P_vecs)
+        cl_vec = [ [ 0 for _ in range(numpolys)] for _ in range(numverifiers)]
+        cr_vec = [ [ 0 for _ in range(numpolys)] for _ in range(numverifiers)]
+        L_vec = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        R_vec = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        Las = [G1.identity() for _ in range(len(a_vecs))]
+        Ras = [G1.identity() for _ in range(len(a_vecs))]
+        for j in range(len(a_vecs)):
+            for i in range(n_p):
+                Las[j] *= g_vec[n_p:][i].pow(a_vecs[j][:n_p][i])
+                Ras[j] *= g_vec[:n_p][i].pow(a_vecs[j][n_p:][i])
+        for i in range(numpolys):
+            for j in range(numverifiers):
+                #abs_idx = i * numverifiers + j
+                #cl_vec[abs_idx] = inner_product(a_vecs[i][:n_p], b_vecs[j][n_p:2*n_p])
+                #cr_vec[abs_idx] = inner_product(a_vecs[i][n_p:2*n_p], b_vecs[j][:n_p])
+                #L_vec[abs_idx] = Las[i] * (u.pow(cl_vec[abs_idx]))
+                #R_vec[abs_idx] = Ras[i] * (u.pow(cr_vec[abs_idx]))
+                cl_vec[j][i] = inner_product(a_vecs[i][:n_p], b_vecs[j][n_p:2*n_p])
+                cr_vec[j][i] = inner_product(a_vecs[i][n_p:2*n_p], b_vecs[j][:n_p])
+                L_vec[j][i] = Las[i] * (u.pow(cl_vec[j][i]))
+                R_vec[j][i] = Ras[i] * (u.pow(cr_vec[j][i]))
+        # Fiat Shamir
+        # Make a merkle tree over everything that varies between verifiers
+        # TODO: na should be in the transcript
+        tree = MerkleTree()
+        b_hashes = [hashzrlist(b_vecs[i]) for i in range(len(b_vecs))]
+        leaves = [hash_list_to_bytes(
+            #[b_hashes[j%len(b_vecs)], hashg1list([P_vec[j], L_vec[j], R_vec[j]])]
+            [b_hashes[j%len(b_vecs)], hashg1list([P_vec[j%numverifiers][j//numverifiers], L_vec[j%numverifiers][j//numverifiers], R_vec[j%numverifiers][j//numverifiers]])]
+            ) for j in range(numproofs)]
+        tree.append_many(leaves)
+        roothash = tree.get_root_hash()
+        #for j in range(len(P_vecs)):
+        #    branch = tree.get_branch(j)
+        #    proofsteps[j].append(roothash)
+        #    proofsteps[j].append(branch)
+        for i in range(numpolys):
+            for j in range(numverifiers):
+                branch = tree.get_branch(i * numverifiers + j)
+                proofsteps[j][i].append(roothash)
+                proofsteps[j][i].append(branch)
+        transcript += pickle.dumps([hashg1list(g_vec), roothash])
+        x = ZR.hash(transcript)
+        xi = x ** -1
+        # this part must come after the challenge is generated, which must
+        # come after L and R are calculated. Don't try to condense the loops
+        g_vec_p, a_vecs_p = [], []
+        b_vecs_p = [[] for _ in range(len(b_vecs))]
+        for i in range(n_p):
+            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
+        for k in range(len(a_vecs)):
+            a_vecs_p.append([])
+            for i in range(n_p):
+                a_vecs_p[k].append(a_vecs[k][:n_p][i] * x + a_vecs[k][n_p:][i] * xi)
+        for j in range(len(b_vecs)):
+            #for i in range(n_p):
+            #    b_vecs_p[j].append(b_vecs[j][:n_p][i] * xi + b_vecs[j][n_p:][i] * x)
+            b_vecs_p[j] = [b_vecs[j][:n_p][i] * xi + b_vecs[j][n_p:][i] * x for i in range(n_p)]
+        x2, xi2 = x * x, xi * xi
+        Lax2Raxi2s = [Las[i].pow(x2) * Ras[i].pow(xi2) for i in range(len(a_vecs))]
+        #for i in range(numproofs // row_length):
+        #    for j in range(row_length):
+        #        abs_idx = i * row_length + j
+        #        P_vec[abs_idx] *= Lax2Raxi2s[i] * u ** (x2 * cl_vec[abs_idx] + xi2 * cr_vec[abs_idx])
+        xil = [x2, xi2]
+        #for i in range(numproofs):
+        #    upow = inner_product(xil, [cl_vec[i], cr_vec[i]])
+        #    P_vec[i] *= Lax2Raxi2s[i//row_length] * u.pow(upow)
+        for i in range(numpolys):
+            for j in range(numverifiers):
+                upow = inner_product(xil, [cl_vec[j][i], cr_vec[j][i]])
+                P_vec[j][i] *= Lax2Raxi2s[i] * u.pow(upow)
+        proofs = recursive_proofs(g_vec_p, a_vecs_p, b_vecs_p, u, n_p, P_vec, transcript)
+        #for j in range(len(proofs)):
+        #    proofsteps[j].append(L_vec[j])
+        #    proofsteps[j].append(R_vec[j])
+        #    proofs[j].append(proofsteps[j])
+        for j in range(len(proofs)):
+            for i in range(len(proofs[0])):
+                proofsteps[j][i].append(L_vec[j][i])
+                proofsteps[j][i].append(R_vec[j][i])
+                proofs[j][i].append(proofsteps[j][i])
+        return proofs
+
+    t = len(a_vecs[0])
+    if crs is None:
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        u = G1.hash(b"honeybadgeru")
+    else:
+        [g_vec, u] = crs
+        g_vec = g_vec[:t]
+    if comms is None:
+        comms = []
+        for j in range(len(a_vecs)):
+            comms.append(G1.identity())
+            for i in range(t):
+                comms[j] *= g_vec[i].pow(a_vecs[j][i])
+
+    #iprods = [ZR(0) for _ in range(len(b_vecs)*len(a_vecs))]
+    #P_vecs = [None] * (len(b_vecs) * len(a_vecs))
+    numverifiers = len(b_vecs)
+    numpolys = len(a_vecs)
+    iprods = [ [ 0 for _ in range(numpolys)] for _ in range(numverifiers)]
+    P_vecs = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+
+    row_length = len(b_vecs)
+    for i in range(len(a_vecs)):
+        for j in range(len(b_vecs)):
+            #abs_idx = i * row_length + j
+            iprods[j][i] = inner_product(a_vecs[i], b_vecs[j])
+            P_vecs[j][i] = comms[i] * u.pow(iprods[j][i])
+            #iprods[abs_idx] = inner_product(a_vecs[i], b_vecs[j])
+            #P_vecs[abs_idx] = comms[i] * u.pow(iprods[abs_idx])
+    transcript = pickle.dumps(u)
+    i = 0
+    proofs = recursive_proofs(g_vec, a_vecs, b_vecs, u, t, P_vecs, transcript)
+    #for j in range(len(proofs)):
+    #    proofs[j].insert(0, t)
+
+
+    for i in range(len(a_vecs)):
+        for j in range(len(b_vecs)):
+            proofs[j][i].insert(0,t)
+    
+    #this line switches the indices of the list
+    invproofs = [list(a) for a in zip(*proofs)]
+    return [comms, iprods, invproofs]
+
+#@profile
+def prove_double_batch_inner_product_one_known_but_differenter(a_vecs, b_vecs, comms=None, crs=None):
+    #@profile
+    def recursive_proofs(g_vec, a_vecs, b_vecs, u, n, P_vec, transcript):
+        numverifiers = len(b_vecs)
+        numpolys = len(a_vecs)
+        numproofs = numverifiers * numpolys
+        _ = [g.preprocess(5) for g in g_vec]
+        if n == 1:
+            treeparts = [ [] for j in range(numverifiers) ]
+            proofs = [ [ [[a_vecs[i][0]]] for i in range(numpolys)] for _ in range(numverifiers)]
+            return [proofs, treeparts]
+        proofsteps = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        if n % 2 == 1:
+        
+            for i in range(numpolys):
+                na = a_vecs[i][-1] * -1
+                gtail = g_vec[-1].pow(na)
+                for j in range(numverifiers):
+                    P_vec[j][i] *= gtail * u.pow(na * b_vecs[j][-1])
+            #        proofsteps[j][i].append(na)
+            nas = [a_vecs[i][-1] * -1 for i in range(numpolys)]
+            proofsteps = [ [ [nas[i]] for i in range(numpolys)] for j in range(numverifiers)]
+            
+        n_p = n // 2
+        #cl_vec = [ [ 0 for _ in range(numpolys)] for _ in range(numverifiers)]
+        #cr_vec = [ [ 0 for _ in range(numpolys)] for _ in range(numverifiers)]
+        #L_vec = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        #R_vec = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        Las = [G1.identity() for _ in range(len(a_vecs))]
+        Ras = [G1.identity() for _ in range(len(a_vecs))]
+        for j in range(len(a_vecs)):
+            for i in range(n_p):
+                Las[j] *= g_vec[n_p:][i].pow(a_vecs[j][:n_p][i])
+                Ras[j] *= g_vec[:n_p][i].pow(a_vecs[j][n_p:][i])
+        #for i in range(numpolys):
+        #    for j in range(numverifiers):
+        #        cl_vec[j][i] = inner_product(a_vecs[i][:n_p], b_vecs[j][n_p:2*n_p])
+        #        cr_vec[j][i] = inner_product(a_vecs[i][n_p:2*n_p], b_vecs[j][:n_p])
+        #        L_vec[j][i] = Las[i] * (u.pow(cl_vec[j][i]))
+        #        R_vec[j][i] = Ras[i] * (u.pow(cr_vec[j][i]))
+        cl_vec = [ [ inner_product(a_vecs[i][:n_p], b_vecs[j][n_p:2*n_p]) for i in range(numpolys)] for j in range(numverifiers)]
+        cr_vec = [ [ inner_product(a_vecs[i][n_p:2*n_p], b_vecs[j][:n_p]) for i in range(numpolys)] for j in range(numverifiers)]
+        L_vec = [ [ Las[i] * (u.pow(cl_vec[j][i])) for i in range(numpolys)] for j in range(numverifiers)]
+        R_vec = [ [ Ras[i] * (u.pow(cr_vec[j][i])) for i in range(numpolys)] for j in range(numverifiers)]
+        # Fiat Shamir
+        # Make a merkle tree over everything that varies between verifiers
+        # TODO: na should be in the transcript
+        tree = MerkleTree()
+        b_hashes = [hashzrlist(b_vecs[i]) for i in range(len(b_vecs))]
+        g1lists = [ [] for j in range(numverifiers) ]
+        for j in range(numverifiers):
+            #smash each list of lists into a single list (list() causes the map operation to execute)
+            _ = list(map(g1lists[j].extend, [P_vec[j], L_vec[j], R_vec[j]]))
+        leaves = [pickle.dumps(
+                [b_hashes[j], hashg1listbn(g1lists[j])]
+            ) for j in range(numverifiers)]
+        tree.append_many(leaves)
+        roothash = tree.get_root_hash()
+        treesteps = [ [roothash, tree.get_branch(j)] for j in range(numverifiers)]
+        transcript += pickle.dumps([hashg1list(g_vec), roothash])
+        x = ZR.hash(transcript)
+        xi = x ** -1
+        # this part must come after the challenge is generated, which must
+        # come after L and R are calculated. Don't try to condense the loops
+        g_vec_p, a_vecs_p = [], []
+        b_vecs_p = [[] for _ in range(len(b_vecs))]
+        for i in range(n_p):
+            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
+        for k in range(len(a_vecs)):
+            a_vecs_p.append([])
+            for i in range(n_p):
+                a_vecs_p[k].append(a_vecs[k][:n_p][i] * x + a_vecs[k][n_p:][i] * xi)
+        for j in range(len(b_vecs)):
+            b_vecs_p[j] = [b_vecs[j][:n_p][i] * xi + b_vecs[j][n_p:][i] * x for i in range(n_p)]
+        x2, xi2 = x * x, xi * xi
+        Lax2Raxi2s = [Las[i].pow(x2) * Ras[i].pow(xi2) for i in range(len(a_vecs))]
+        xil = [x2, xi2]
+        # the following line is equivalent to:
+        # for i in range(numpolys):
+        #    for j in range(numverifiers):
+        #        upow = inner_product(xil, [cl_vec[j][i], cr_vec[j][i]])
+        #        P_vec[j][i] *= Lax2Raxi2s[i] * u.pow(upow)
+        _ = [ [P_vec[j][i].__imul__(Lax2Raxi2s[i] * u.pow(inner_product(xil, [cl_vec[j][i], cr_vec[j][i]]))) for i in range(numpolys)] for j in range(numverifiers)]
+        proofs, treeparts = recursive_proofs(g_vec_p, a_vecs_p, b_vecs_p, u, n_p, P_vec, transcript)
+        for j in range(len(proofs)):
+            treeparts[j].append(treesteps[j])
+            #for i in range(len(proofs[0])):
+            #    proofs[j][i].append(proofsteps[j][i] + [L_vec[j][i]] + [R_vec[j][i]])
+        _ = [ [ proofs[j][i].append(proofsteps[j][i] + [L_vec[j][i]] + [R_vec[j][i]]) for i in range(numpolys)] for j in range(numverifiers)]
+        return [proofs, treeparts]
+
+    t = len(a_vecs[0])
+    if crs is None:
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        u = G1.hash(b"honeybadgeru")
+    else:
+        [g_vec, u] = crs
+        g_vec = g_vec[:t]
+    if comms is None:
+        comms = []
+        for j in range(len(a_vecs)):
+            comms.append(G1.identity())
+            _ = [ comms[j].__imul__(g_vec[i].pow(a_vecs[j][i])) for i in range(t) ]
+            #for i in range(t):
+            #    comms[j] *= g_vec[i].pow(a_vecs[j][i])
+
+
+    numverifiers = len(b_vecs)
+    numpolys = len(a_vecs)
+    iprods = [ [ inner_product(a_vecs[i], b_vecs[j]) for i in range(numpolys)] for j in range(numverifiers)]
+    P_vecs = [ [ comms[i] * u.pow(iprods[j][i]) for i in range(numpolys)] for j in range(numverifiers)]
+
+    transcript = pickle.dumps(u)
+    proofs, treeparts = recursive_proofs(g_vec, a_vecs, b_vecs, u, t, P_vecs, transcript)
+
+    outproofs = [ [proofs[j], treeparts[j]] for j in range(numverifiers)]
+    
+    return [comms, iprods, outproofs]
+
+def verify_double_batch_inner_product_one_known_but_differenter(comms, iprods, b_vec, proofs, treeparts, crs=None):
+    def recursive_verify(g_vec, b_vec, u, proofs, treeparts, n, Ps, transcript):
+        if n == 1:
+            ret = True
+            for i in range(len(proofs)):
+                a, b = proofs[i][0][0], b_vec[0]
+                ret &= Ps[i] == g_vec[0].pow(a) * u.pow(a * b)
+            return ret
+        Ls, Rs = [], []
+        if n % 2 == 1:
+            for i in range(len(proofs)):
+                #[na, roothash, branch, L, R] = proofs[i][-1]
+                [na, L, R] = proofs[i][-1]
+                Ps[i] *= g_vec[-1].pow(na) * u.pow(na * b_vec[-1])
+                Ls.append(L)
+                Rs.append(R)
+        else:
+            for i in range(len(proofs)):
+                #[roothash, branch, L, R] = proofs[i][-1]
+                [L, R] = proofs[i][-1]
+                Ls.append(L)
+                Rs.append(R)
+        roothash, branch = treeparts[-1]
+        #for i in range(len(proofs)):
+        #    leafi = hash_list_to_bytes(
+        #        [hashzrlist(b_vec), hashg1list([Ps[i], Ls[i], Rs[i]])]
+        #    )
+        #    if not MerkleTree.verify_membership(
+        #        leafi, branches[i], last_roothash
+        #    ):
+        #        return False
+        g1list = []
+        _ = list(map(g1list.extend, [Ps, Ls, Rs]))
+        leaf = pickle.dumps([hashzrlist(b_vec), hashg1list(g1list)])
+        if not MerkleTree.verify_membership(leaf, branch, roothash):
+            return False
+        transcript += pickle.dumps([hashg1list(g_vec), roothash])
+        x = ZR.hash(transcript)
+        xi = x ** -1
+        x2 = x*x
+        xi2 = xi*xi
+        n_p = n // 2
+        g_vec_p = []
+        b_vec_p = []
+        for i in range(n_p):
+            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
+            b_vec_p.append(b_vec[:n_p][i] * xi + b_vec[n_p:][i] * x)
+        Ps_p = []
+        for i in range(len(proofs)):
+            Ps_p.append(Ls[i] ** (x2) * Ps[i] * Rs[i] ** (xi2))
+        proofs_p = []
+        for i in range(len(proofs)):
+            proofs_p.append(proofs[i][:-1])
+        treeparts_p = treeparts[:-1]
+        return recursive_verify(g_vec_p, b_vec_p, u, proofs_p, treeparts_p, n_p, Ps_p, transcript)
+
+    n = len(b_vec)
+    iproofs = []
+    for i in range(len(proofs)):
+        iproofs.append(proofs[i][1:])
+    if crs is None:
+        g_vec = G1.hash_many(b"honeybadgerg", n)
+        u = G1.hash(b"honeybadgeru")
+    else:
+        [g_vec, u] = crs
+        g_vec = g_vec[:n]
+    Ps = []
+    for i in range(len(comms)):
+        Ps.append(comms[i] * u.pow(iprods[i]))
+    transcript = pickle.dumps(u)
+    return recursive_verify(g_vec, b_vec, u, proofs, treeparts, n, Ps, transcript)

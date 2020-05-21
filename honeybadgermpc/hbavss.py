@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import pypairing
 from pickle import dumps, loads
 from honeybadgermpc.betterpairing import ZR, interpolate_g1_at_x, G1
 from honeybadgermpc.polynomial import polynomials_over
@@ -70,7 +71,6 @@ class HbAvssLight:
         Handle the implication of AVSS.
         Return True if the implication is valid, False otherwise.
         """
-        print("got implication")
         # discard if PKj ! = g^SKj
         if self.public_keys[j] != pow(self.g, j_sk):
             return False
@@ -681,7 +681,7 @@ def get_avss_params(n, t):
 
 class HbAvssBatchLoglin:
     def __init__(
-        self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
+        self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=pypairing.ZR
     ):  # (# noqa: E501)
         self.public_keys, self.private_key = public_keys, private_key
         self.n, self.t, self.my_id = n, t, my_id
@@ -728,7 +728,7 @@ class HbAvssBatchLoglin:
             task.cancel()
 
     async def _handle_implication(
-        self, avid, tag, ephemeral_public_key, commitments, j, j_sk, j_k
+        self, avid, tag, ephemeral_public_key, commitments, j, j_sk
     ):
         """
         Handle the implication of AVSS.
@@ -745,15 +745,15 @@ class HbAvssBatchLoglin:
         secret_count = len(commitments)
 
         try:
-            mixed_batch = SymmetricCrypto.decrypt(
+            j_shares, j_witnesses = SymmetricCrypto.decrypt(
                 str(j_shared_key).encode(), implicate_msg
             )
-            j_shares = []
-            j_witnesses = []
-            for i in range(secret_count):
-                temp_share, temp_witness = mixed_batch[i]
-                j_shares.append(temp_share)
-                j_witnesses.append(temp_witness)
+            #j_shares = []
+            #j_witnesses = []
+            #for i in range(secret_count):
+            #    temp_share, temp_witness = mixed_batch[i]
+            #    j_shares.append(temp_share)
+            #    j_witnesses.append(temp_witness)
         except Exception as e:  # TODO specific exception
             logger.warn("Implicate confirmed, bad encryption:", e)
             return True
@@ -785,30 +785,32 @@ class HbAvssBatchLoglin:
         # Decrypt
         all_shares_valid = True
         try:
-            all_wits = SymmetricCrypto.decrypt(str(shared_key).encode(), dispersal_msg)
-            for k in range(secret_count):
-                shares[k], witnesses[k] = all_wits[k]
+            #all_wits = SymmetricCrypto.decrypt(str(shared_key).encode(), dispersal_msg)
+            #for k in range(secret_count):
+            #    shares[k], witnesses[k] = all_wits[k]
+            shares, witnesses = SymmetricCrypto.decrypt(str(shared_key).encode(), dispersal_msg)
         except ValueError as e:  # TODO: more specific exception
             logger.warn(f"Implicate due to failure in decrypting: {e}")
             all_shares_valid = False
-            multicast((HbAVSSMessageType.IMPLICATE, self.private_key, 0))
+            multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
 
         # call if decryption was successful
         if all_shares_valid:
             if not self.poly_commit.batch_verify_eval(
                 commitments, self.my_id + 1, shares, witnesses
             ):
+                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
                 all_shares_valid = False
                 # Find which share was invalid and implicate
-                for k in range(secret_count):
-                    if not self.poly_commit.verify_eval(
-                        commitments[k],
-                        self.my_id + 1,
-                        shares[k],
-                        witnesses[k],
-                    ):  # (# noqa: E501)
-                        multicast((HbAVSSMessageType.IMPLICATE, self.private_key, k))
-                        break
+                #for k in range(secret_count):
+                #    if not self.poly_commit.verify_eval(
+                #        commitments[k],
+                #        self.my_id + 1,
+                #        shares[k],
+                #        witnesses[k],
+                #    ):  # (# noqa: E501)
+                #        multicast((HbAVSSMessageType.IMPLICATE, self.private_key, k))
+                #        break
         if all_shares_valid:
             logger.debug("[%d] OK", self.my_id)
             logger.info(f"OK_timestamp: {time.time()}")
@@ -864,8 +866,8 @@ class HbAvssBatchLoglin:
                     ephemeral_public_key,
                     commitments,
                     sender,
-                    avss_msg[1],
-                    avss_msg[2],
+                    avss_msg[1]
+                    #avss_msg[2],
                 ):
                     # proceed to share recovery
                     in_share_recovery = True
@@ -879,16 +881,16 @@ class HbAvssBatchLoglin:
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                 retrieved_msg = await avid.retrieve(tag, sender)
                 try:
-                    mixed_batch = SymmetricCrypto.decrypt(
+                    j_shares, j_witnesses = SymmetricCrypto.decrypt(
                         str(avss_msg[1]).encode(), retrieved_msg
                     )
                     #logger.debug("[%d] on after decryption in kdi implication", self.my_id)
-                    j_shares = []
-                    j_witnesses = []
-                    for i in range(secret_count):
-                        temp_share, temp_witness = mixed_batch[i]
-                        j_shares.append(temp_share)
-                        j_witnesses.append(temp_witness)
+                    #j_shares = []
+                    #j_witnesses = []
+                    #for i in range(secret_count):
+                    #    temp_share, temp_witness = mixed_batch[i]
+                    #    j_shares.append(temp_share)
+                    #    j_witnesses.append(temp_witness)
                 except Exception as e:  # TODO: Add specific exception
                     logger.warn("Implicate confirmed, bad encryption:", e)
                 if(self.poly_commit.batch_verify_eval(commitments,
@@ -937,7 +939,7 @@ class HbAvssBatchLoglin:
         # BatchPolyCommit
         #   Cs  <- BatchPolyCommit(SP,φ(·,k))
         # TODO: Whether we should keep track of that or not
-        r = ZR.random()
+        r = pypairing.ZR.random()
         for k in range(secret_count):
             phi[k] = self.poly.random(self.t, values[k])
             commitments[k] = self.poly_commit.commit(phi[k], r)
@@ -948,9 +950,11 @@ class HbAvssBatchLoglin:
         witnesses = self.poly_commit.double_batch_create_witness(phi, r)
         for i in range(n):
             shared_key = pow(self.public_keys[i], ephemeral_secret_key)
-            z = [None] * secret_count
-            for k in range(secret_count):
-                z[k] = (phi[k](i + 1), witnesses[k][i])
+            #z = [None] * secret_count
+            #for k in range(secret_count):
+            #    z[k] = (phi[k](i + 1), witnesses[k][i])
+            phis_i = [ phi[k](i + 1) for k in range(batch_size)]
+            z = (phis_i, witnesses[i])
             zz = SymmetricCrypto.encrypt(str(shared_key).encode(), z)
             dispersal_msg_list[i] = zz
 

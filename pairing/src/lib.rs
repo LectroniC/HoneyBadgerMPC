@@ -17,28 +17,49 @@ extern crate pyo3;
 
 use pyo3::prelude::*;
 use pyo3::types::PyList;
+use pyo3::types::PyBool;
+use pyo3::types::PyBytes;
+use pyo3::types::PyLong;
+use pyo3::PyNumberProtocol;
+use pyo3::basic::CompareOp;
+//mod number;
+//use self::number::PyNumberProtocol;
+use pyo3::PyObjectProtocol;
 use std::convert::TryFrom;
+use std::convert::TryInto;
+
+extern crate num_bigint;
+use num_bigint::{BigInt, Sign};
+
+extern crate num_traits;
+use num_traits::cast::ToPrimitive;
+use num_traits::Pow;
+use num_traits::Num;
 
 extern crate byteorder;
-#[macro_use]
 extern crate ff;
-extern crate rand;
 extern crate sha2;
 extern crate hex;
+extern crate group;
+extern crate rand_core;
+extern crate rand_chacha;
+
+
 
 #[cfg(test)]
 pub mod tests;
 
 pub mod bls12_381;
-use bls12_381::{G1, G2, Fr, Fq, Fq2, Fq6, Fq12, FqRepr, FrRepr};
-mod wnaf;
-pub use self::wnaf::Wnaf;
+use bls12_381::{G1, G1Affine, G2, Fr, Fq, Fq2, Fq6, Fq12, FqRepr, FrRepr};
+use group::CurveProjective;
+use group::CurveAffine;
 
 use ff::{Field,  PrimeField, PrimeFieldDecodingError, PrimeFieldRepr, ScalarEngine, SqrtField};
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Write};
-use rand::{Rand, Rng, SeedableRng, XorShiftRng, ChaChaRng};
+use rand_chacha::ChaCha20Rng;
+use rand_core::SeedableRng;
 use sha2::{Sha256, Sha512, Digest};
 
 
@@ -74,9 +95,9 @@ fn hex_to_bin (hexstr: &String) -> String
     out
 }
 
-/// An "engine" is a collection of types (fields, elliptic curve groups, etc.)
-/// with well-defined relationships. In particular, the G1/G2 curve groups are
-/// of prime order `r`, and are equipped with a bilinear pairing function.
+//We are currently using pairing v 0.16.0. The code is copied here rather than imported so that
+//some private struct fields can be manipulated.
+//*************** BEGIN CODE BORROWED FROM PAIRING CRATE **************
 pub trait Engine: ScalarEngine {
     /// The projective representation of an element in G1.
     type G1: CurveProjective<
@@ -84,19 +105,17 @@ pub trait Engine: ScalarEngine {
             Base = Self::Fq,
             Scalar = Self::Fr,
             Affine = Self::G1Affine,
-        >
-        + From<Self::G1Affine>;
+        > + From<Self::G1Affine>;
 
     /// The affine representation of an element in G1.
-    type G1Affine: CurveAffine<
+    type G1Affine: PairingCurveAffine<
             Engine = Self,
             Base = Self::Fq,
             Scalar = Self::Fr,
             Projective = Self::G1,
             Pair = Self::G2Affine,
             PairingResult = Self::Fqk,
-        >
-        + From<Self::G1>;
+        > + From<Self::G1>;
 
     /// The projective representation of an element in G2.
     type G2: CurveProjective<
@@ -104,19 +123,17 @@ pub trait Engine: ScalarEngine {
             Base = Self::Fqe,
             Scalar = Self::Fr,
             Affine = Self::G2Affine,
-        >
-        + From<Self::G2Affine>;
+        > + From<Self::G2Affine>;
 
     /// The affine representation of an element in G2.
-    type G2Affine: CurveAffine<
+    type G2Affine: PairingCurveAffine<
             Engine = Self,
             Base = Self::Fqe,
             Scalar = Self::Fr,
             Projective = Self::G2,
             Pair = Self::G1Affine,
             PairingResult = Self::Fqk,
-        >
-        + From<Self::G2>;
+        > + From<Self::G2>;
 
     /// The base field that hosts G1.
     type Fq: PrimeField + SqrtField;
@@ -132,13 +149,13 @@ pub trait Engine: ScalarEngine {
     where
         I: IntoIterator<
             Item = &'a (
-                &'a <Self::G1Affine as CurveAffine>::Prepared,
-                &'a <Self::G2Affine as CurveAffine>::Prepared,
+                &'a <Self::G1Affine as PairingCurveAffine>::Prepared,
+                &'a <Self::G2Affine as PairingCurveAffine>::Prepared,
             ),
         >;
 
     /// Perform final exponentiation of the result of a miller loop.
-    fn final_exponentiation(&Self::Fqk) -> Option<Self::Fqk>;
+    fn final_exponentiation(_: &Self::Fqk) -> Option<Self::Fqk>;
 
     /// Performs a complete pairing operation `(p, q)`.
     fn pairing<G1, G2>(p: G1, q: G2) -> Self::Fqk
@@ -147,23 +164,31 @@ pub trait Engine: ScalarEngine {
         G2: Into<Self::G2Affine>,
     {
         Self::final_exponentiation(&Self::miller_loop(
-            [(&(p.into().prepare()), &(q.into().prepare()))].into_iter(),
-        )).unwrap()
+            [(&(p.into().prepare()), &(q.into().prepare()))].iter(),
+        ))
+        .unwrap()
     }
-
-
-
 }
 
-#[pyfunction]
-fn py_pairing(g1: &PyG1, g2: &PyG2) -> PyResult<()> {
-    let a = g1.g1.into_affine();
-    let b = g2.g2.into_affine();
+/// Affine representation of an elliptic curve point that can be used
+/// to perform pairings.
+pub trait PairingCurveAffine: CurveAffine {
+    type Prepared: Clone + Send + Sync + 'static;
+    type Pair: PairingCurveAffine<Pair = Self>;
+    type PairingResult: Field;
 
-    Ok(())
+    /// Prepares this element for pairing purposes.
+    fn prepare(&self) -> Self::Prepared;
+
+    /// Perform a pairing
+    fn pairing_with(&self, other: &Self::Pair) -> Self::PairingResult;
 }
 
-#[pyclass]
+
+//*************** END CODE BORROWED FROM PAIRING CRATE **************
+
+#[pyclass(module = "pypairing", name = G1)]
+#[derive(Clone)]
 struct PyG1 {
    g1 : G1,
    pp : Vec<G1>,
@@ -183,7 +208,7 @@ impl PyG1 {
         }
     }
 
-    fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
+    fn randomize(&mut self, a: Vec<u32>) -> PyResult<()>{
         let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
         let mut i = 0;
         for item in a.iter(){
@@ -191,8 +216,8 @@ impl PyG1 {
             seed[i] = *myu32;
             i = i + 1;
         }
-        let mut rng = ChaChaRng::from_seed(&seed);
-        let g = G1::rand(&mut rng);
+        let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+        let g = G1::random(&mut rng);
         self.g1 = g;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -202,9 +227,14 @@ impl PyG1 {
     }
 
     fn load_fq_proj(&mut self, fqx: &PyFq, fqy: &PyFq, fqz: &PyFq) -> PyResult<()> {
-        self.g1.x = fqx.fq;
-        self.g1.y = fqy.fq;
-        self.g1.z = fqz.fq;
+        //self.g1.x = fqx.fq;
+        //self.g1.y = fqy.fq;
+        //self.g1.z = fqz.fq;
+        self.g1 = G1 {
+            x: fqx.fq,
+            y: fqy.fq,
+            z: fqz.fq,
+        };
         if self.pplevel != 0 {
             self.pp = Vec::new();
             self.pplevel = 0;
@@ -213,10 +243,16 @@ impl PyG1 {
     }
 
     fn load_fq_affine(&mut self, fqx: &PyFq, fqy: &PyFq) -> PyResult<()> {
-        let mut a = self.g1.into_affine();
-        a.x = fqx.fq;
-        a.y = fqy.fq;
-        self.g1 = a.into_projective();
+        //let mut a = self.g1.into_affine();
+        //a.x = fqx.fq;
+        //a.y = fqy.fq;
+        //self.g1 = a.into_projective();
+        let ga = G1Affine {
+            x: fqx.fq,
+            y: fqy.fq,
+            infinity: false
+        };
+        self.g1 = ga.into_projective();
         if self.pplevel != 0 {
             self.pp = Vec::new();
             self.pplevel = 0;
@@ -286,6 +322,7 @@ impl PyG1 {
         }
         Ok(())
     }
+    
 
     fn sub_assign(&mut self, other: &PyG1) -> PyResult<()> {
         self.g1.sub_assign(&other.g1);
@@ -324,6 +361,7 @@ impl PyG1 {
     }
 
     pub fn projective(&self) -> PyResult<String> {
+        //Ok(format!("({}, {}, {})",self.g1.x, self.g1.y, self.g1.z))
         Ok(format!("({}, {}, {})",self.g1.x, self.g1.y, self.g1.z))
     }
 
@@ -332,7 +370,40 @@ impl PyG1 {
         Ok(format!("({}, {})",aff.x, aff.y))
         //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
     }
-
+    
+    //Serialize into affine coordinates so that equal points serialize the same
+    pub fn __getstate__<'p>(&self, py: Python<'p>) -> PyResult<&'p PyList> {
+        let aff = self.g1.into_affine();
+        let fqx = FqRepr::from(aff.x);
+        let fqy = FqRepr::from(aff.y);
+        let arr1: &[u64] = fqx.as_ref();
+        let arr2: &[u64] = fqy.as_ref();
+        let mut end: [u64;1] = [0;1];
+        if aff.infinity {
+            end[0] = 1;
+        }
+        let arr = [arr1, arr2, &end].concat();
+        Ok(PyList::new(py, arr))
+    }
+    
+    pub fn __setstate__(&mut self, list: &PyAny) -> PyResult<()>
+    {
+        let arr: [u64; 13] = list.extract()?;
+        let fqxr = FqRepr(arr[0..6].try_into().expect("invalid initialization"));
+        let fqyr = FqRepr(arr[6..12].try_into().expect("invalid initialization"));
+        let fqx = Fq::from_repr(fqxr).unwrap();
+        let fqy = Fq::from_repr(fqyr).unwrap();
+        //There may be a more compact way to do this
+        let inf = arr[12] == 1;
+        let ga = G1Affine {
+            x: fqx,
+            y: fqy,
+            infinity: inf
+        };
+        self.g1 = ga.into_projective();
+        Ok(())
+    }
+    
     //Creates preprocessing elements to allow fast scalar multiplication.
     //Level determines extent of precomputation
     fn preprocess(&mut self, level: usize) -> PyResult<()> {
@@ -341,8 +412,8 @@ impl PyG1 {
         let mut base: u64 = 2;
         //calling pow on a u64 only accepts a u32 parameter for reasons undocumented
         base = base.pow(level as u32);
-        let ppsize = (base as usize - 1) * (255 + level - 1)/(level);
-        self.pp = Vec::with_capacity(ppsize);
+        let ppsize = (base - 1) * ((255 + level as u64 - 1)/(level as u64));
+        self.pp = Vec::with_capacity(ppsize as usize);
         //FrRepr::from only takes a u64
         let factor = Fr::from_repr(FrRepr::from(base)).unwrap();
         self.pp.push(self.g1.clone());
@@ -354,7 +425,7 @@ impl PyG1 {
             self.pp.push(next);
         }
         //(x + y - 1) / y is a way to round up the integer division x/y
-        for i in base-1..(base - 1) * (255 + level as u64 - 1)/(level as u64) {
+        for i in base-1..(base - 1) * ((255 + level as u64 - 1)/(level as u64)) {
             let mut next = self.pp[i as usize - (base-1) as usize].clone();
             //Wait, so add_assign takes a borrowed object but mul_assign doesn't?!?!?!?
             next.mul_assign(factor);
@@ -363,6 +434,7 @@ impl PyG1 {
         //It's not really Ok. This is terrible.
         Ok(())
     }
+ 
     fn ppmul(&self, prodend: &PyFr, out: &mut PyG1) -> PyResult<()>
     {
         if self.pp.len() == 0
@@ -393,9 +465,190 @@ impl PyG1 {
         }
         Ok(())
     }
+    
+    fn get_pplevel(&self) -> PyResult<usize> {
+        Ok(self.pplevel)
+    }
+
+    fn pow(&self, rhs: PyFr)  -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        self.ppmul(&rhs, &mut out).unwrap();
+        Ok(out)
+    }
+
+    #[staticmethod]
+    fn hash(bytestr: &PyBytes) -> PyResult<PyG1>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let g = G1::random(&mut rng);
+        Ok(PyG1{
+            g1: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn hash_many(bytestr: &PyBytes, length: usize) -> PyResult<Vec<PyG1>>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut out = Vec::with_capacity(length);
+        for i in 0..length{
+            let g = G1::random(&mut rng);
+            out.push(PyG1{
+                g1: g,
+                pp: Vec::new(),
+                pplevel : 0
+            });
+        }
+        Ok(out)
+    }
+    
+    #[staticmethod]
+    fn identity() -> PyResult<PyG1> {
+        let g =  G1::zero();
+        Ok(PyG1{
+            g1: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn rand(a: Option<Vec<u32>>) -> PyResult<PyG1> {
+        match a {
+            None => {
+                let mut rng = ChaCha20Rng::from_entropy();
+                let g = G1::random(&mut rng);
+                Ok(PyG1{
+                    g1: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            },
+            Some(a) => {
+                let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
+                let mut i = 0;
+                for item in a.iter(){
+                    let myu32: &u32 = item;
+                    seed[i] = *myu32;
+                    i = i + 1;
+                }
+                let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+                let g = G1::random(&mut rng);
+                Ok(PyG1{
+                    g1: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            }
+        }
+        
+    }
 }
 
-#[pyclass]
+#[pyproto]
+impl PyNumberProtocol for PyG1 {
+    fn __mul__(lhs: PyG1, rhs: PyG1) -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        out.g1.clone_from(&lhs.g1);
+        out.g1.add_assign(&rhs.g1);
+        Ok(out)
+    }
+    fn __imul__(&mut self, other: PyG1) -> PyResult<()> {
+        self.add_assign(&other)?;
+        Ok(())
+    }
+    // Somehow this is faster AND more general? Hell yeah!
+    fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let exp: BigInt = rhs.extract()?;
+            let pyfrexp = bigint_to_pyfr(&exp);
+            lhs.ppmul(&pyfrexp, &mut out).unwrap();
+        }
+        else {
+            //let rhscel2 = rhscel.as_ref().unwrap();
+            let exp: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            lhs.ppmul(&exp, &mut out).unwrap();
+        }
+        Ok(out)
+    }
+    /*fn __pow__(lhs: PyG1, rhs: PyFr, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
+        let mut out = PyG1{
+            g1: G1::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        lhs.ppmul(&rhs, &mut out).unwrap();
+        Ok(out)
+    }*/
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyG1 {
+    fn __str__(&self) -> PyResult<String> {
+        let aff = self.g1.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+    }
+    /*fn __repr__(&self) -> PyResult<String> {
+        let aff = self.g1.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+        //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
+    }*/
+    fn __repr__(&self) -> PyResult<String> {
+        let aff = self.g1.into_affine();
+        let hex1 = aff.x.to_string();
+        let hex2 = aff.y.to_string();
+        let bi1 = BigInt::from_str_radix(&hex1[5..hex1.len()-1], 16).unwrap();
+        let bi2 = BigInt::from_str_radix(&hex2[5..hex2.len()-1], 16).unwrap();
+        Ok(format!("({}, {})",bi1.to_str_radix(10), bi2.to_str_radix(10)))
+    }
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyG1 ,b: &PyAny| {
+            let othercel = &b.downcast::<PyCell<PyG1>>();
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherg1: &PyG1 = &othercel.as_ref().unwrap().borrow();
+                a.g1 == otherg1.g1
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
+}
+
+#[pyclass(module = "pypairing", name = G2)]
+#[derive(Clone)]
 struct PyG2 {
    g2 : G2,
    pp : Vec<G2>,
@@ -415,7 +668,7 @@ impl PyG2 {
         }
     }
 
-    fn rand(&mut self, a: Vec<u32>) -> PyResult<()>{
+    fn randomize(&mut self, a: Vec<u32>) -> PyResult<()>{
         let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
         let mut i = 0;
         for item in a.iter(){
@@ -423,8 +676,8 @@ impl PyG2 {
             seed[i] = *myu32;
             i = i + 1;
         }
-        let mut rng = ChaChaRng::from_seed(&seed);
-        let g = G2::rand(&mut rng);
+        let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+        let g = G2::random(&mut rng);
         self.g2 = g;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -554,11 +807,13 @@ impl PyG2 {
     pub fn projective(&self) -> PyResult<String> {
         Ok(format!("({}, {}, {})",self.g2.x, self.g2.y, self.g2.z))
     }
+    
     pub fn __str__(&self) -> PyResult<String> {
         let aff = self.g2.into_affine();
         Ok(format!("({}, {})",aff.x, aff.y))
         //Ok(format!("({}, {})",self.g2.into_affine().x, self.g2.into_affine().y))
     }
+    
     fn preprocess(&mut self, level: usize) -> PyResult<()> {
         self.pplevel = level;
         let mut base: u64 = 2;
@@ -611,10 +866,160 @@ impl PyG2 {
         }
         Ok(())
     }
+    
+    #[staticmethod]
+    fn hash(bytestr: &PyBytes) -> PyResult<PyG2>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let g = G2::random(&mut rng);
+        Ok(PyG2{
+            g2: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn hash_many(bytestr: &PyBytes, length: usize) -> PyResult<Vec<PyG2>>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut out = Vec::with_capacity(length);
+        for i in 0..length{
+            let g = G2::random(&mut rng);
+            out.push(PyG2{
+                g2: g,
+                pp: Vec::new(),
+                pplevel : 0
+            });
+        }
+        Ok(out)
+    }
+    
+    #[staticmethod]
+    fn identity() -> PyResult<PyG2> {
+        let g =  G2::zero();
+        Ok(PyG2{
+            g2: g,
+            pp: Vec::new(),
+            pplevel : 0
+        })
+    }
+    
+    #[staticmethod]
+    fn rand(a: Option<Vec<u32>>) -> PyResult<PyG2> {
+        match a {
+            None => {
+                let mut rng = ChaCha20Rng::from_entropy();
+                let g = G2::random(&mut rng);
+                Ok(PyG2{
+                    g2: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            },
+            Some(a) => {
+                let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
+                let mut i = 0;
+                for item in a.iter(){
+                    let myu32: &u32 = item;
+                    seed[i] = *myu32;
+                    i = i + 1;
+                }
+                let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+                let g = G2::random(&mut rng);
+                Ok(PyG2{
+                    g2: g,
+                    pp: Vec::new(),
+                    pplevel : 0
+                })
+            }
+        }
+        
+    }
 
 }
 
-#[pyclass]
+#[pyproto]
+impl PyNumberProtocol for PyG2 {
+    fn __mul__(lhs: PyG2, rhs: PyG2) -> PyResult<PyG2> {
+        let mut out = PyG2{
+            g2: G2::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        out.g2.clone_from(&lhs.g2);
+        out.g2.add_assign(&rhs.g2);
+        Ok(out)
+    }
+    fn __imul__(&mut self, other: PyG2) -> PyResult<()> {
+        self.add_assign(&other)?;
+        Ok(())
+    }
+    fn __pow__(lhs: PyG2, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG2> {
+        let mut out = PyG2{
+            g2: G2::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let exp: BigInt = rhs.extract()?;
+            let pyfrexp = bigint_to_pyfr(&exp);
+            lhs.ppmul(&pyfrexp, &mut out).unwrap();
+        }
+        else {
+            //let rhscel2 = rhscel.as_ref().unwrap();
+            let exp: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            lhs.ppmul(&exp, &mut out).unwrap();
+        }
+        Ok(out)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyG2 {
+    fn __str__(&self) -> PyResult<String> {
+        let aff = self.g2.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+    }
+    fn __repr__(&self) -> PyResult<String> {
+        let aff = self.g2.into_affine();
+        Ok(format!("({}, {})",aff.x, aff.y))
+        //Ok(format!("({}, {})",self.g1.into_affine().x, self.g1.into_affine().y))
+    }
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyG2 ,b: &PyAny| {
+            let othercel = &b.downcast::<PyCell<PyG2>>();
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherg2: &PyG2 = &othercel.as_ref().unwrap().borrow();
+                a.g2 == otherg2.g2
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
+}
+
+//#[pyclass]
+#[pyclass(module = "pypairing", name = ZR)]
+#[derive(Clone)]
 struct PyFr {
    fr : Fr
 }
@@ -623,10 +1028,23 @@ struct PyFr {
 impl PyFr {
 
     #[new]
-    fn new(s1: u64, s2: u64, s3: u64, s4: u64) -> Self {
-        let f = Fr::from_repr(FrRepr([s1,s2,s3,s4])).unwrap();
-        PyFr{
-            fr: f,
+    fn new(s1: Option<&PyAny>, s2: Option<u64>, s3: Option<u64>, s4: Option<u64>) -> Self {
+        //let f = Fr::from_repr(FrRepr([s1,s2,s3,s4])).unwrap();
+        //PyFr{
+        //    fr: f,
+        //}
+        // Allows for initialization via either [u64, u64, u64, u64] or arbitrarily-large-int
+        match s1 {
+            None => PyFr{fr:Fr::one()},
+            Some(s1) => {
+                match s2 {
+                    None => pyfr_from_pyany(s1).unwrap(),
+                    Some(s2) => {
+                        let is1: u64 = s1.extract().unwrap();
+                        PyFr{fr: Fr::from_repr(FrRepr([is1,s2,s3.unwrap(),s4.unwrap()])).unwrap()}
+                    }
+                }
+            }
         }
     }
     
@@ -685,7 +1103,10 @@ impl PyFr {
         Ok(())
     }
 
-    /// a.equals(b)
+    fn is_zero(&self) -> bool {
+        self.fr == Fr::zero()
+    }
+
     fn equals(&self, other: &PyFr) -> bool {
         self.fr == other.fr
     }
@@ -699,7 +1120,258 @@ impl PyFr {
     pub fn __str__(&self) -> PyResult<String> {
         Ok(format!("{}",self.fr))
     }
+    
+    pub fn __getstate__<'p>(&self, py: Python<'p>) -> PyResult<&'p PyList> {
+        let frrep = FrRepr::from(self.fr);
+        let arr: &[u64] = frrep.as_ref();
+        Ok(PyList::new(py, arr))
+    }
+    
+    pub fn __setstate__(&mut self, list: &PyAny) -> PyResult<()>
+    {
+        let arr: [u64; 4] = list.extract()?;
+        let myfr = Fr::from_repr(FrRepr(arr)).unwrap();
+        self.fr = myfr;
+        Ok(())
+    }
+    
+    fn __eq__<'p>(&self, other: &PyAny, py: Python<'p>) -> PyResult<&'p PyBool> {
+        let otherresult = pyfr_from_pyany(other);
+        if otherresult.is_err(){
+            Ok(PyBool::new(py, false))
+        }
+        else{
+            let otherfr: &PyFr = &otherresult.unwrap();
+            Ok(PyBool::new(py, self.fr == otherfr.fr))
+        }
+    }
+    
+    #[staticmethod]
+    fn hash(bytestr: &PyBytes) -> PyResult<PyFr>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let f = Fr::random(&mut rng);
+        Ok(PyFr{fr: f})
+    }
+    
+    #[staticmethod]
+    fn hash_many(bytestr: &PyBytes, length: usize) -> PyResult<Vec<PyFr>>{
+        let bytes: &[u8] = bytestr.as_bytes();
+        let mut hasher = Sha256::new();
+        hasher.input(bytes);
+        let result = hasher.result();
+        let seed: [u8; 32] = result.as_slice().try_into().unwrap();
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut out = Vec::with_capacity(length);
+        for i in 0..length{
+            let f = Fr::random(&mut rng);
+            out.push(PyFr{fr: f});
+        }
+        Ok(out)
+    }
+    
+    #[staticmethod]
+    fn rand(a: Option<Vec<u32>>) -> PyResult<PyFr> {
+        match a {
+            None => {
+                let mut rng = ChaCha20Rng::from_entropy();
+                let f = Fr::random(&mut rng);
+                Ok(PyFr{
+                    fr: f
+                })
+            },
+            Some(a) => {
+                let mut seed: [u32;8] = [0,0,0,0,0,0,0,0];
+                let mut i = 0;
+                for item in a.iter(){
+                    let myu32: &u32 = item;
+                    seed[i] = *myu32;
+                    i = i + 1;
+                }
+                let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+                let f = Fr::random(&mut rng);
+                Ok(PyFr{
+                    fr: f
+                })
+            }
+        }
+        
+    }
+    
+    #[staticmethod]
+    fn random(a: Option<Vec<u32>>) -> PyResult<PyFr> {
+        Ok(PyFr::rand(a)?)
+    }
 
+}
+
+#[pyproto]
+impl PyNumberProtocol for PyFr {
+    
+    fn __add__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let addend: BigInt = rhs.extract()?;
+            let pyfraddend = bigint_to_pyfr(&addend);
+            out.fr.add_assign(&pyfraddend.fr);
+        }
+        else{
+            let pyfraddend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.add_assign(&pyfraddend.fr);
+        }
+        Ok(out)
+    }
+    
+    fn __truediv__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let prodend: BigInt = rhs.extract()?;
+            let pyfrprodend = bigint_to_pyfr(&prodend);
+            let mut div = Fr::one();
+            div.clone_from(&pyfrprodend.fr);
+            div = div.inverse().unwrap();
+            out.fr.mul_assign(&div);
+        }
+        else{
+            let pyfrprodend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            let mut div = Fr::one();
+            div.clone_from(&pyfrprodend.fr);
+            div = div.inverse().unwrap();
+            out.fr.mul_assign(&div);
+        }
+        Ok(out)
+    }
+    
+    fn __mul__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let prodend: BigInt = rhs.extract()?;
+            let pyfrprodend = bigint_to_pyfr(&prodend);
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        else{
+            let pyfrprodend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        Ok(out)
+    }
+    
+    fn __neg__(&self) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&self.fr);
+        out.fr.negate();
+        Ok(out)
+    }
+    
+    //TODO: this does not currently work in pyo3 if __mul__ is also defined. It's a current issue that will hopefully be resolved soon
+    /*fn __rmul__(&self, other: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&self.fr);
+        let rhscel = &other.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let prodend: BigInt = other.extract()?;
+            let pyfrprodend = bigint_to_pyfr(&prodend);
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        else{
+            let pyfrprodend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.mul_assign(&pyfrprodend.fr);
+        }
+        Ok(out)
+    }*/
+    //fn __int__(&self) -> PyResult<&'p PyLong> {
+    fn __int__(&self) -> PyResult<BigInt> {
+        let hex = self.fr.to_string();
+        let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
+        //Ok(bi.to_str_radix(10))
+        Ok(bi)
+    }
+    
+    fn __pow__(lhs: PyFr, rhs: &PyAny, _mod: Option<&'p PyAny>) -> PyResult<PyFr> {
+        let expi: BigInt = rhs.extract()?;
+        let exp = bigint_to_pyfrexp(&expi);
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        out.pow_assign(&exp);
+        Ok(out)
+    }
+    
+    fn __sub__(lhs: PyFr, rhs: &PyAny) -> PyResult<PyFr> {
+        let mut out = PyFr{
+            fr: Fr::one()
+        };
+        out.fr.clone_from(&lhs.fr);
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let addend: BigInt = rhs.extract()?;
+            let pyfraddend = bigint_to_pyfr(&addend);
+            out.fr.sub_assign(&pyfraddend.fr);
+        }
+        else{
+            let pyfraddend: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            out.fr.sub_assign(&pyfraddend.fr);
+        }
+        Ok(out)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyFr {
+    fn __str__(&self) -> PyResult<String> {
+        //let hex = self.fr.to_string();
+        //let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
+        //Ok(bi.to_str_radix(10))
+        Ok(format!("{}",self.fr))
+    }
+    fn __repr__(&self) -> PyResult<String> {
+        //Ok(format!("{}",self.fr))
+        let hex = self.fr.to_string();
+        let bi = BigInt::from_str_radix(&hex[5..hex.len()-1], 16).unwrap();
+        Ok(bi.to_str_radix(10))
+    }
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyFr ,b: &PyAny| {
+            let othercel = pyfr_from_pyany(b);
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherfr: &PyFr = &othercel.unwrap();
+                a.fr == otherfr.fr
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            //TODO: fix the rest of these
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
 }
 
 #[pyclass]
@@ -774,7 +1446,8 @@ impl PyFqRepr {
     }
 }
 
-#[pyclass]
+#[pyclass(module = "pypairing", name = GT)]
+#[derive(Clone)]
 struct PyFq12 {
     fq12 : Fq12,
     pp : Vec<Fq12>,
@@ -801,8 +1474,8 @@ impl PyFq12 {
             seed[i] = *myu32;
             i = i + 1;
         }
-        let mut rng = ChaChaRng::from_seed(&seed);
-        let g = Fq12::rand(&mut rng);
+        let mut rng = ChaCha20Rng::from_seed(swap_seed_format(seed));
+        let g = Fq12::random(&mut rng);
         self.fq12 = g;
         if self.pplevel != 0 {
             self.pp = Vec::new();
@@ -934,6 +1607,18 @@ impl PyFq12 {
         }
         Ok(())
     }
+    
+    fn __eq__<'p>(&self, other: &PyAny, py: Python<'p>) -> PyResult<&'p PyBool> {
+        let othercel = &other.downcast::<PyCell<PyFq12>>();
+        if othercel.is_err(){
+            Ok(PyBool::new(py, false))
+        }
+        else{
+            let otherfq12: &PyFq12 = &othercel.as_ref().unwrap().borrow();
+            Ok(PyBool::new(py, self.fq12 == otherfq12.fq12))
+        }
+    }
+    
     fn pppow(&self, prodend: &PyFr, out: &mut PyFq12) -> PyResult<()>
     {
         if self.pp.len() == 0
@@ -1002,6 +1687,68 @@ impl PyFq12 {
     }
 }
 
+#[pyproto]
+impl PyNumberProtocol for PyFq12 {
+    fn __mul__(lhs: PyFq12, rhs: PyFq12) -> PyResult<PyFq12> {
+        let mut out = PyFq12{
+            fq12: Fq12::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        out.fq12.clone_from(&lhs.fq12);
+        out.fq12.mul_assign(&rhs.fq12);
+        Ok(out)
+    }
+    fn __imul__(&mut self, other: PyFq12) -> PyResult<()> {
+        self.mul_assign(&other);
+        Ok(())
+    }
+    fn __pow__(lhs: PyFq12, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyFq12> {
+        let mut out = PyFq12{
+            fq12: Fq12::one(),
+            pp: Vec::new(),
+            pplevel : 0
+        };
+        let rhscel = &rhs.downcast::<PyCell<PyFr>>();
+        if rhscel.is_err(){
+            let exp: BigInt = rhs.extract()?;
+            let pyfrexp = bigint_to_pyfr(&exp);
+            lhs.pppow(&pyfrexp, &mut out).unwrap();
+        }
+        else {
+            //let rhscel2 = rhscel.as_ref().unwrap();
+            let exp: &PyFr = &rhscel.as_ref().unwrap().borrow();
+            lhs.pppow(&exp, &mut out).unwrap();
+        }
+        Ok(out)
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyFq12 {
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<bool> {
+        let eq = |a:&PyFq12 ,b: &PyAny| {
+            let othercel = &b.downcast::<PyCell<PyFq12>>();
+            if othercel.is_err(){
+                false
+            }
+            else{
+                let otherfq12: &PyFq12 = &othercel.as_ref().unwrap().borrow();
+                a.fq12 == otherfq12.fq12
+            }
+        };
+        match op {
+            CompareOp::Eq => Ok(eq(self, other)),
+            CompareOp::Ne => Ok(!eq(self, other)),
+            CompareOp::Lt => Ok(false),
+            CompareOp::Le => Ok(false),
+            CompareOp::Gt => Ok(false),
+            CompareOp::Ge => Ok(false),
+        }
+    }
+}
+
+
 #[pyfunction]
 fn vec_sum(a: &PyList, py: Python) -> PyResult<String>{
     let mut sum =  Fr::from_str("0").unwrap();
@@ -1038,7 +1785,7 @@ fn hashfrs(a: &PyList) -> PyResult<String>{
     Ok(format!("{}",text))
 }
 
-#[pyfunction]
+/*#[pyfunction]
 fn hashg1s(a: &PyList) -> PyResult<String>{
     //let mut string =  String::from("");
     let mut vec = Vec::new();
@@ -1059,11 +1806,98 @@ fn hashg1s(a: &PyList) -> PyResult<String>{
     let result = hasher.result();
     let text = hex::encode(&result[..]);
     Ok(format!("{}",text))
+}*/
+
+//TODO: Optimizing: 1)See if Serde can give you the byte structure you want 2) call batch_normalization
+#[pyfunction]
+fn hashg1s(mut a: Vec<PyG1>) -> PyResult<String>{
+    let mut hasher = Sha256::new();
+    for point in a {
+        let fqrx = FqRepr::from(point.g1.into_affine().x);
+        let arr = fqrx.as_ref();
+        for num in arr {
+            hasher.input(num.to_be_bytes());
+        }
+    }
+    let result = hasher.result();
+    let text = hex::encode(&result[..]);
+    Ok(format!("{}",text))
 }
 
 #[pyfunction]
-fn dotprod(output: &mut PyFr, a: &PyList, b: &PyList) -> PyResult<()>{
-    output.fr.clone_from(&Fr::zero());
+fn hashg1sbn(mut a: Vec<PyG1>) -> PyResult<String>{
+    let mut hasher = Sha256::new();
+    pyg1_batch_normalization(&mut a);
+    for point in &a {
+        let fqrx = FqRepr::from(point.g1.into_affine().x);
+        let arr = fqrx.as_ref();
+        for num in arr {
+            hasher.input(num.to_be_bytes());
+        }
+    }
+    let result = hasher.result();
+    let text = hex::encode(&result[..]);
+    Ok(format!("{}",text))
+}
+
+fn pyg1_batch_normalization(v: &mut [PyG1]) {
+                // Montgomery’s Trick and Fast Implementation of Masked AES
+                // Genelle, Prouff and Quisquater
+                // Section 3.2
+
+                // First pass: compute [a, ab, abc, ...]
+                let mut prod = Vec::with_capacity(v.len());
+                let mut tmp = Fq::one();
+                for g in v
+                    .iter_mut()
+                    // Ignore normalized elements
+                    .filter(|g| !g.g1.is_normalized())
+                {
+                    tmp.mul_assign(&g.g1.z);
+                    prod.push(tmp);
+                }
+
+                // Invert `tmp`.
+                tmp = tmp.inverse().unwrap(); // Guaranteed to be nonzero.
+
+                // Second pass: iterate backwards to compute inverses
+                for (g, s) in v
+                    .iter_mut()
+                    // Backwards
+                    .rev()
+                    // Ignore normalized elements
+                    .filter(|g| !g.g1.is_normalized())
+                    // Backwards, skip last element, fill in one for last term.
+                    .zip(
+                        prod.into_iter()
+                            .rev()
+                            .skip(1)
+                            .chain(Some(Fq::one())),
+                    )
+                {
+                    // tmp := tmp * g.z; g.z := tmp * s = 1/z
+                    let mut newtmp = tmp;
+                    newtmp.mul_assign(&g.g1.z);
+                    g.g1.z = tmp;
+                    g.g1.z.mul_assign(&s);
+                    tmp = newtmp;
+                }
+
+                // Perform affine transformations
+                for g in v.iter_mut().filter(|g| !g.g1.is_normalized()) {
+                    let mut z = g.g1.z; // 1/z
+                    z.square(); // 1/z^2
+                    g.g1.x.mul_assign(&z); // x/z^2
+                    z.mul_assign(&g.g1.z); // 1/z^3
+                    g.g1.y.mul_assign(&z); // y/z^3
+                    g.g1.z = Fq::one(); // z = 1
+                }
+}
+
+
+#[pyfunction]
+fn dotprod(a: &PyList, b: &PyList) -> PyResult<PyFr>{
+    let mut output = PyFr{ fr: Fr::zero()};
     let mut temp = Fr::zero();
     for (ai, bi) in a.iter().zip(b){
         //let aif: &PyFr = ai.try_into().unwrap();
@@ -1076,12 +1910,12 @@ fn dotprod(output: &mut PyFr, a: &PyList, b: &PyList) -> PyResult<()>{
         temp.mul_assign(&bif.fr);
         output.fr.add_assign(&temp);
     }
-    Ok(())
+    Ok(output)
 }
 
 #[pyfunction]
 fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p PyList> {
-    let l: &PyList = PyList::empty(py);
+    //let l: &PyList = PyList::empty(py);
     //let weed = PyFr{
     //    fr: Fr::one(),
     //};
@@ -1101,6 +1935,134 @@ fn condense_list<'p>(inlist: &PyList, x: &PyFr, py: Python<'p>) -> PyResult<&'p 
     Ok(PyList::new(py, items))
 }
 
+#[pyfunction]
+//fn pair<'p>(py: Python<'p>, a: &PyG1, b: &PyG2) -> PyResult<&'p PyFq12> {
+fn pair(a: &PyG1, b: &PyG2) -> PyResult<PyFq12> {
+    let affa = a.g1.into_affine();
+    let myfq12 = affa.pairing_with(&b.g2.into_affine());
+    Ok(PyFq12{  fq12: myfq12,
+                pp: Vec::new(),
+                pplevel : 0
+    })
+}
+
+#[derive(Clone)]
+enum preprocessable{
+    PyG1,
+    PyG2,
+    PyFq12
+}
+
+/*#[pyclass(module = "pypairing")]
+#[derive(Clone)]
+struct Point {
+}
+
+#[pymethods]
+impl Point {
+    #[new]
+    fn new() -> Self {
+        Point{}
+    }
+}
+
+#[pyfunction]
+fn precomp_list(mut list: Vec<preprocessable>, level: usize) -> PyResult<()> {
+//fn precomp_list(list: &mut Vec, level: usize) -> PyResult<()> {
+    for i in 1..2 {
+    //for item in list.iter(){
+       //item.preprocess(level);
+       let i = 2;
+    }
+    Ok(())
+}*/
+
+fn bigint_to_pyfr(bint: &BigInt) -> PyFr {
+    let bls12_381_r = BigInt::new(Sign::Plus, vec![1u32,4294967295u32,4294859774u32,1404937218u32,161601541u32,859428872u32,698187080u32,1944954707u32]);
+    let mut uint = bint % &bls12_381_r;
+    // The % in rust is not modulo, it's remainder!
+    if uint < BigInt::from(0u8) {
+        uint += &bls12_381_r;
+    }
+    //BigInts only serialize/deserialize into Vec<u32>, while Fr only works with Vec<u64>
+    //They are not cross compatible ヽ(ಠ_ಠ)ノ
+    let s1 = &uint % 2u128.pow(64);
+    let s2 = (&uint >> 64) % 2u128.pow(64);
+    let s3: BigInt = (&uint >> 128) % 2u128.pow(64);
+    let s4: BigInt = &uint >> 192;
+    let myfr = Fr::from_repr(FrRepr([s1.to_u64().unwrap(),s2.to_u64().unwrap(),s3.to_u64().unwrap(),s4.to_u64().unwrap()])).unwrap();
+    let mypyfr = PyFr{
+        fr: myfr
+    };
+    mypyfr
+}
+
+fn bigint_to_pyfrexp(bint: &BigInt) -> PyFr {
+    let bls12_381_r = BigInt::new(Sign::Plus, vec![0u32,4294967295u32,4294859774u32,1404937218u32,161601541u32,859428872u32,698187080u32,1944954707u32]);
+    let mut uint = bint % &bls12_381_r;
+    // The % in rust is not modulo, it's remainder!
+    if uint < BigInt::from(0u8) {
+        uint += &bls12_381_r;
+    }
+    //BigInts only serialize/deserialize into Vec<u32>, while Fr only works with Vec<u64>
+    //They are not cross compatible ヽ(ಠ_ಠ)ノ
+    let s1 = &uint % 2u128.pow(64);
+    let s2 = (&uint >> 64) % 2u128.pow(64);
+    let s3: BigInt = (&uint >> 128) % 2u128.pow(64);
+    let s4: BigInt = &uint >> 192;
+    let myfr = Fr::from_repr(FrRepr([s1.to_u64().unwrap(),s2.to_u64().unwrap(),s3.to_u64().unwrap(),s4.to_u64().unwrap()])).unwrap();
+    let mypyfr = PyFr{
+        fr: myfr
+    };
+    mypyfr
+}
+
+fn swap_seed_format(inarr: [u32;8]) -> [u8;32] {
+    let mut out: [u8;32] = [0; 32];
+    for i in 0..8 {
+        let next_four = inarr[i].to_be_bytes();
+        out[4*i] = next_four[0];
+        out[4*i+1] = next_four[1];
+        out[4*i+2] = next_four[2];
+        out[4*i+3] = next_four[3];
+    }
+    out
+}
+
+fn pyfr_from_pyany(any: &PyAny) -> PyResult<PyFr> {
+    let mut out = PyFr{
+        fr: Fr::one()
+    };
+    let anycel = &any.downcast::<PyCell<PyFr>>();
+    if anycel.is_err(){
+        let bi: BigInt = any.extract()?;
+        let mypyfr = bigint_to_pyfr(&bi);
+        out.fr = mypyfr.fr;
+    }
+    else{
+        let mypyfr: &PyFr = &anycel.as_ref().unwrap().borrow();
+        out.fr.clone_from(&mypyfr.fr);
+    }
+    Ok(out)
+}
+
+fn pyfr_from_pyanyexp(any: &PyAny) -> PyResult<PyFr> {
+    let mut out = PyFr{
+        fr: Fr::one()
+    };
+    let anycel = &any.downcast::<PyCell<PyFr>>();
+    if anycel.is_err(){
+        let bi: BigInt = any.extract()?;
+        let mypyfr = bigint_to_pyfrexp(&bi);
+        out.fr = mypyfr.fr;
+    }
+    else{
+        let mypyfr: &PyFr = &anycel.as_ref().unwrap().borrow();
+        out.fr.clone_from(&mypyfr.fr);
+    }
+    Ok(out)
+}
+
 #[pymodule]
 fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyG1>()?;
@@ -1111,170 +2073,17 @@ fn pypairing(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFq6>()?;
     m.add_class::<PyFq12>()?;
     m.add_class::<PyFr>()?;
-    m.add_wrapped(wrap_pyfunction!(py_pairing))?;
     //m.add_function(wrap_pyfunction!(vec_sum))?;
+    m.add_wrapped(wrap_pyfunction!(pair))?;
     m.add_wrapped(wrap_pyfunction!(vec_sum))?;
     m.add_wrapped(wrap_pyfunction!(hashfrs))?;
     m.add_wrapped(wrap_pyfunction!(hashg1s))?;
+    m.add_wrapped(wrap_pyfunction!(hashg1sbn))?;
     m.add_wrapped(wrap_pyfunction!(dotprod))?;
     m.add_wrapped(wrap_pyfunction!(condense_list))?;
     Ok(())
 }
 
-
-/// Projective representation of an elliptic curve point guaranteed to be
-/// in the correct prime order subgroup.
-pub trait CurveProjective:
-    PartialEq
-    + Eq
-    + Sized
-    + Copy
-    + Clone
-    + Send
-    + Sync
-    + fmt::Debug
-    + fmt::Display
-    + rand::Rand
-    + 'static
-{
-    type Engine: Engine<Fr = Self::Scalar>;
-    type Scalar: PrimeField + SqrtField;
-    type Base: SqrtField;
-    type Affine: CurveAffine<Projective = Self, Scalar = Self::Scalar>;
-
-    /// Returns the additive identity.
-    fn zero() -> Self;
-
-    /// Returns a fixed generator of unknown exponent.
-    fn one() -> Self;
-
-    /// Determines if this point is the point at infinity.
-    fn is_zero(&self) -> bool;
-
-    /// Normalizes a slice of projective elements so that
-    /// conversion to affine is cheap.
-    fn batch_normalization(v: &mut [Self]);
-
-    /// Checks if the point is already "normalized" so that
-    /// cheap affine conversion is possible.
-    fn is_normalized(&self) -> bool;
-
-    /// Doubles this element.
-    fn double(&mut self);
-
-    /// Adds another element to this element.
-    fn add_assign(&mut self, other: &Self);
-
-    /// Subtracts another element from this element.
-    fn sub_assign(&mut self, other: &Self) {
-        let mut tmp = *other;
-        tmp.negate();
-        self.add_assign(&tmp);
-    }
-
-    /// Adds an affine element to this element.
-    fn add_assign_mixed(&mut self, other: &Self::Affine);
-
-    /// Negates this element.
-    fn negate(&mut self);
-
-    /// Performs scalar multiplication of this element.
-    fn mul_assign<S: Into<<Self::Scalar as PrimeField>::Repr>>(&mut self, other: S);
-
-    /// Converts this element into its affine representation.
-    fn into_affine(&self) -> Self::Affine;
-
-    /// Recommends a wNAF window table size given a scalar. Always returns a number
-    /// between 2 and 22, inclusive.
-    fn recommended_wnaf_for_scalar(scalar: <Self::Scalar as PrimeField>::Repr) -> usize;
-
-    /// Recommends a wNAF window size given the number of scalars you intend to multiply
-    /// a base by. Always returns a number between 2 and 22, inclusive.
-    fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize;
-}
-
-/// Affine representation of an elliptic curve point guaranteed to be
-/// in the correct prime order subgroup.
-pub trait CurveAffine:
-    Copy + Clone + Sized + Send + Sync + fmt::Debug + fmt::Display + PartialEq + Eq + 'static
-{
-    type Engine: Engine<Fr = Self::Scalar>;
-    type Scalar: PrimeField + SqrtField;
-    type Base: SqrtField;
-    type Projective: CurveProjective<Affine = Self, Scalar = Self::Scalar>;
-    type Prepared: Clone + Send + Sync + 'static;
-    type Uncompressed: EncodedPoint<Affine = Self>;
-    type Compressed: EncodedPoint<Affine = Self>;
-    type Pair: CurveAffine<Pair = Self>;
-    type PairingResult: Field;
-
-    /// Returns the additive identity.
-    fn zero() -> Self;
-
-    /// Returns a fixed generator of unknown exponent.
-    fn one() -> Self;
-
-    /// Determines if this point represents the point at infinity; the
-    /// additive identity.
-    fn is_zero(&self) -> bool;
-
-    /// Negates this element.
-    fn negate(&mut self);
-
-    /// Performs scalar multiplication of this element with mixed addition.
-    fn mul<S: Into<<Self::Scalar as PrimeField>::Repr>>(&self, other: S) -> Self::Projective;
-
-    /// Prepares this element for pairing purposes.
-    fn prepare(&self) -> Self::Prepared;
-
-    /// Perform a pairing
-    fn pairing_with(&self, other: &Self::Pair) -> Self::PairingResult;
-
-    /// Converts this element into its affine representation.
-    fn into_projective(&self) -> Self::Projective;
-
-    /// Converts this element into its compressed encoding, so long as it's not
-    /// the point at infinity.
-    fn into_compressed(&self) -> Self::Compressed {
-        <Self::Compressed as EncodedPoint>::from_affine(*self)
-    }
-
-    /// Converts this element into its uncompressed encoding, so long as it's not
-    /// the point at infinity.
-    fn into_uncompressed(&self) -> Self::Uncompressed {
-        <Self::Uncompressed as EncodedPoint>::from_affine(*self)
-    }
-}
-
-/// An encoded elliptic curve point, which should essentially wrap a `[u8; N]`.
-pub trait EncodedPoint:
-    Sized + Send + Sync + AsRef<[u8]> + AsMut<[u8]> + Clone + Copy + 'static
-{
-    type Affine: CurveAffine;
-
-    /// Creates an empty representation.
-    fn empty() -> Self;
-
-    /// Returns the number of bytes consumed by this representation.
-    fn size() -> usize;
-
-    /// Converts an `EncodedPoint` into a `CurveAffine` element,
-    /// if the encoding represents a valid element.
-    fn into_affine(&self) -> Result<Self::Affine, GroupDecodingError>;
-
-    /// Converts an `EncodedPoint` into a `CurveAffine` element,
-    /// without guaranteeing that the encoding represents a valid
-    /// element. This is useful when the caller knows the encoding is
-    /// valid already.
-    ///
-    /// If the encoding is invalid, this can break API invariants,
-    /// so caution is strongly encouraged.
-    fn into_affine_unchecked(&self) -> Result<Self::Affine, GroupDecodingError>;
-
-    /// Creates an `EncodedPoint` from an affine point, as long as the
-    /// point is not the point at infinity.
-    fn from_affine(affine: Self::Affine) -> Self;
-}
 
 /// An error that may occur when trying to decode an `EncodedPoint`.
 #[derive(Debug)]
