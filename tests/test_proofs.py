@@ -7,7 +7,7 @@ from honeybadgermpc.proofs import (
     verify_batch_inner_product_one_known,
     MerkleTree,
 )
-from honeybadgermpc.betterpairing import ZR, G1
+from pypairing import ZR, G1
 
 
 def test_inner_product_proof():

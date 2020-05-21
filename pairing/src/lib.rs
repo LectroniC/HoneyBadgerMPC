@@ -575,7 +575,8 @@ impl PyNumberProtocol for PyG1 {
         self.add_assign(&other)?;
         Ok(())
     }
-    /*fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
+    // Somehow this is faster AND more general? Hell yeah!
+    fn __pow__(lhs: PyG1, rhs: &PyAny, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
         let mut out = PyG1{
             g1: G1::one(),
             pp: Vec::new(),
@@ -593,8 +594,8 @@ impl PyNumberProtocol for PyG1 {
             lhs.ppmul(&exp, &mut out).unwrap();
         }
         Ok(out)
-    }*/
-    fn __pow__(lhs: PyG1, rhs: PyFr, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
+    }
+    /*fn __pow__(lhs: PyG1, rhs: PyFr, _mod: Option<&'p PyAny>)  -> PyResult<PyG1> {
         let mut out = PyG1{
             g1: G1::one(),
             pp: Vec::new(),
@@ -602,7 +603,7 @@ impl PyNumberProtocol for PyG1 {
         };
         lhs.ppmul(&rhs, &mut out).unwrap();
         Ok(out)
-    }
+    }*/
 }
 
 #[pyproto]

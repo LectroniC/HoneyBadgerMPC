@@ -26,9 +26,9 @@ class inner_product_prover:
             g_vec = g_vec[:n]
             h_vec = h_vec[:n]
         if comm is not None:
-            P = comm * G1.one()
+            P = comm * G1.identity()
         else:
-            comm = G1.one()
+            comm = G1.identity()
             for i in range(n):
                 comm *= g_vec[i] ** a_vec[i] * h_vec[i] ** b_vec[i]
         iprod = ZR(0)
@@ -52,8 +52,8 @@ class inner_product_prover:
         n_p = n // 2
         cl = ZR(0)
         cr = ZR(0)
-        L = G1.one()
-        R = G1.one()
+        L = G1.identity()
+        R = G1.identity()
         for i in range(n_p):
             cl += a_vec[:n_p][i] * b_vec[n_p:][i]
             cr += a_vec[n_p:][i] * b_vec[:n_p][i]

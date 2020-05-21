@@ -21,7 +21,7 @@ def test_bilinear_math():
     assert pair(a ** i, b) == c ** i
     assert pair(a, b ** i) == c ** i
     assert pair(a ** i, b ** i) == c ** (i ** 2)
-    a.preprocess(10)
+    a.preprocess(8)
     b.preprocess(3)
     c.preprocess(5)
     i = ZR.random()

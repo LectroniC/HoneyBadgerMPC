@@ -81,7 +81,7 @@ def prove_inner_product(a_vec, b_vec, comm=None, crs=None):
             return proof
         proofstep = []
         if n % 2 == 1:
-            na, nb = -1 * a_vec[-1], -1 * b_vec[-1]
+            na, nb = a_vec[-1] * -1, b_vec[-1] * -1
             P *= g_vec[-1] ** (na) * h_vec[-1] ** (nb) * u ** (-na * nb)
             proofstep.append(na)
             proofstep.append(nb)
