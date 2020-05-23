@@ -828,8 +828,8 @@ def prove_double_batch_inner_product_one_known_but_differenter(a_vecs, b_vecs, c
             proofs = [ [ [[a_vecs[i][0]]] for i in range(numpolys)] for _ in range(numverifiers)]
             return [proofs, treeparts]
         proofsteps = [ [ [] for _ in range(numpolys)] for _ in range(numverifiers)]
+        nas = None
         if n % 2 == 1:
-        
             for i in range(numpolys):
                 na = a_vecs[i][-1] * -1
                 gtail = g_vec[-1].pow(na)
@@ -864,13 +864,16 @@ def prove_double_batch_inner_product_one_known_but_differenter(a_vecs, b_vecs, c
         # Make a merkle tree over everything that varies between verifiers
         # TODO: na should be in the transcript
         tree = MerkleTree()
-        b_hashes = [hashzrlist(b_vecs[i]) for i in range(len(b_vecs))]
+        if nas is None:
+            zr_hashes = [hashzrlist(b_vecs[i]) for i in range(len(b_vecs))]
+        else:
+            zr_hashes = [hashzrlist(b_vecs[i] + nas) for i in range(len(b_vecs))]
         g1lists = [ [] for j in range(numverifiers) ]
         for j in range(numverifiers):
             #smash each list of lists into a single list (list() causes the map operation to execute)
             _ = list(map(g1lists[j].extend, [P_vec[j], L_vec[j], R_vec[j]]))
         leaves = [pickle.dumps(
-                [b_hashes[j], hashg1listbn(g1lists[j])]
+                [zr_hashes[j], hashg1listbn(g1lists[j])]
             ) for j in range(numverifiers)]
         tree.append_many(leaves)
         roothash = tree.get_root_hash()
@@ -935,59 +938,66 @@ def prove_double_batch_inner_product_one_known_but_differenter(a_vecs, b_vecs, c
     
     return [comms, iprods, outproofs]
 
+#@profile
 def verify_double_batch_inner_product_one_known_but_differenter(comms, iprods, b_vec, proofs, treeparts, crs=None):
+    #@profile
     def recursive_verify(g_vec, b_vec, u, proofs, treeparts, n, Ps, transcript):
         if n == 1:
             ret = True
+            g_vec[0].preprocess(4)
             for i in range(len(proofs)):
-                a, b = proofs[i][0][0], b_vec[0]
+                try:
+                   a, b = proofs[i][0][0], b_vec[0]
+                except ValueError:
+                    return False
                 ret &= Ps[i] == g_vec[0].pow(a) * u.pow(a * b)
             return ret
         Ls, Rs = [], []
+        nas = None
         if n % 2 == 1:
+            nas = []
+            g_vec[-1].preprocess(4)
             for i in range(len(proofs)):
                 #[na, roothash, branch, L, R] = proofs[i][-1]
-                [na, L, R] = proofs[i][-1]
+                try:
+                    [na, L, R] = proofs[i][-1]
+                except ValueError:
+                    return False
                 Ps[i] *= g_vec[-1].pow(na) * u.pow(na * b_vec[-1])
                 Ls.append(L)
                 Rs.append(R)
+                nas.append(na)
         else:
             for i in range(len(proofs)):
                 #[roothash, branch, L, R] = proofs[i][-1]
-                [L, R] = proofs[i][-1]
+                try:
+                    [L, R] = proofs[i][-1]
+                except ValueError:
+                    return False
                 Ls.append(L)
                 Rs.append(R)
-        roothash, branch = treeparts[-1]
-        #for i in range(len(proofs)):
-        #    leafi = hash_list_to_bytes(
-        #        [hashzrlist(b_vec), hashg1list([Ps[i], Ls[i], Rs[i]])]
-        #    )
-        #    if not MerkleTree.verify_membership(
-        #        leafi, branches[i], last_roothash
-        #    ):
-        #        return False
+        try:
+            roothash, branch = treeparts[-1]
+        except ValueError:
+            return False
         g1list = []
         _ = list(map(g1list.extend, [Ps, Ls, Rs]))
-        leaf = pickle.dumps([hashzrlist(b_vec), hashg1list(g1list)])
+        if nas is None:
+            leaf = pickle.dumps([hashzrlist(b_vec), hashg1listbn(g1list)])
+        else:
+            leaf = pickle.dumps([hashzrlist(b_vec + nas), hashg1listbn(g1list)])
         if not MerkleTree.verify_membership(leaf, branch, roothash):
             return False
-        transcript += pickle.dumps([hashg1list(g_vec), roothash])
+        transcript += pickle.dumps([hashg1listbn(g_vec), roothash])
         x = ZR.hash(transcript)
         xi = x ** -1
         x2 = x*x
         xi2 = xi*xi
         n_p = n // 2
-        g_vec_p = []
-        b_vec_p = []
-        for i in range(n_p):
-            g_vec_p.append(g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x))
-            b_vec_p.append(b_vec[:n_p][i] * xi + b_vec[n_p:][i] * x)
-        Ps_p = []
-        for i in range(len(proofs)):
-            Ps_p.append(Ls[i] ** (x2) * Ps[i] * Rs[i] ** (xi2))
-        proofs_p = []
-        for i in range(len(proofs)):
-            proofs_p.append(proofs[i][:-1])
+        g_vec_p = [g_vec[:n_p][i].pow(xi) * g_vec[n_p:][i].pow(x) for i in range(n_p)]
+        b_vec_p = [b_vec[:n_p][i] * xi + b_vec[n_p:][i] * x for i in range(n_p)]
+        Ps_p = [ Ls[i].pow(x2) * Ps[i] * Rs[i].pow(xi2) for i in range(len(proofs))]
+        proofs_p = [proofs[i][:-1] for i in range(len(proofs))]
         treeparts_p = treeparts[:-1]
         return recursive_verify(g_vec_p, b_vec_p, u, proofs_p, treeparts_p, n_p, Ps_p, transcript)
 
@@ -1001,8 +1011,8 @@ def verify_double_batch_inner_product_one_known_but_differenter(comms, iprods, b
     else:
         [g_vec, u] = crs
         g_vec = g_vec[:n]
-    Ps = []
-    for i in range(len(comms)):
-        Ps.append(comms[i] * u.pow(iprods[i]))
+    Ps = [comms[i] * u.pow(iprods[i]) for i in range(len(comms))]
+    #for i in range(len(comms)):
+    #    Ps.append(comms[i] * u.pow(iprods[i]))
     transcript = pickle.dumps(u)
     return recursive_verify(g_vec, b_vec, u, proofs, treeparts, n, Ps, transcript)

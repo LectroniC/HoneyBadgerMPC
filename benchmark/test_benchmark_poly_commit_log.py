@@ -79,7 +79,7 @@ def test_benchmark_verify_10_polys(benchmark, t):
 @mark.parametrize("t", [1, 2, 5, 11, 21, 33])
 def test_benchmark_batch_verify(benchmark, t):
     pc = PolyCommitLog(degree_max=t)
-    pc.preprocess_prover(7)
+    pc.preprocess_verifier(16)
     phis = []
     r = ZR.random()
     cs = []
@@ -146,6 +146,11 @@ if __name__ == "__main__":
         c_curr = pc.commit(phi_curr, r)
         cs.append(c_curr)
     #cProfile.run("pc.double_batch_create_witness(phis, r)")
-    witnesses = pc.double_batch_create_witness_but_differenter(phis, r)
+    witnesses = pc.double_batch_create_witness(phis, r)
+    i = 4
+    phis_at_4 = []
+    for j in range(len(phis)):
+        phis_at_4.append(phis[j](i))
+    assert pc.batch_verify_eval(cs, i, phis_at_4, witnesses[i-1])
     #print(len(witnesses))
     #print(len(witnesses[1]))
