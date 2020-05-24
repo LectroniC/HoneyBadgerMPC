@@ -282,9 +282,11 @@ class PolyCommitLog:
             Ds, t_hats, y_vec, iproofs, crs=[self.gs, self.u]
         )
         return ret'''
-
-    def batch_verify_eval(self, cs, i, phis_at_i, witness):
+    # Degree specification enables degree enforcement (will return false if polynomial is not of specified degree)
+    def batch_verify_eval(self, cs, i, phis_at_i, witness, degree=None):
         [roothash, branch, t, S, T, Ds, mu, t_hats, proof] = witness
+        if degree is not None:
+            t = degree
         iproof, treeparts = proof
         if not MerkleTree.verify_membership(pickle.dumps(T), branch, roothash):
             return False
@@ -305,4 +307,7 @@ class PolyCommitLog:
         # 0 to length-1
         for i in range(len(self.gs) - 1):
             self.y_vecs.append([ZR(i + 1) ** j for j in range(len(self.gs))])
+
+    def preprocess_verifier(self, level=8):
+        self.u.preprocess(level)
 

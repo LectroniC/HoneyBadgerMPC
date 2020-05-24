@@ -44,4 +44,18 @@ def test_double_batch_pc_log_batch_prove_and_verify(t):
     assert not pc.batch_verify_eval([c1,c2], 3, [phi1(4), phi2(4)], witnesses[3])
     assert not pc.batch_verify_eval([c1,c2], 4, [phi1(4), phi2(4)], witnesses[2])
     assert not pc.batch_verify_eval([c1,c1], 4, [phi1(4), phi2(4)], witnesses[3])
-    
+
+@mark.parametrize("t", [3,6,10])
+def test_double_batch_pc_log_batch_differing_degrees(t):
+    pc = PolyCommitLog()
+    n = 2*t+1
+    phi1 = polynomials_over(ZR).random(t)
+    phi2 = polynomials_over(ZR).random(t)
+    r = ZR.random()
+    c1 = pc.commit(phi1, r)
+    c2 = pc.commit(phi2, r)
+    witnesses = pc.double_batch_create_witness([phi1, phi2], r, n=n)
+    assert pc.batch_verify_eval([c1,c2], 4, [phi1(4), phi2(4)], witnesses[3])
+    assert pc.batch_verify_eval([c1,c2], 4, [phi1(4), phi2(4)], witnesses[3], degree=t)
+    assert not pc.batch_verify_eval([c1,c2], 4, [phi1(4), phi2(4)], witnesses[3], degree=t+1)
+    assert not pc.batch_verify_eval([c1,c2], 4, [phi1(4), phi2(4)], witnesses[3], degree=t-1)
