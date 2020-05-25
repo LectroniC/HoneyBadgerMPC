@@ -1,4 +1,4 @@
 #!/bin/bash
+rm ../.benchmarks/Linux-CPython-3.7-64bit/0001_hbavss_loglin.json
 cd ..
-rm hbavss_benchmark_data.txt
-pytest --benchmark-save=pclog benchmark/test_benchmark_hbavss_loglin.py
+pytest --benchmark-save=hbavss_loglin benchmark/test_benchmark_hbavss_loglin.py
