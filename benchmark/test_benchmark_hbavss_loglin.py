@@ -190,8 +190,9 @@ class HbAvssBatchDummy:
             if len(ready_set) >= (2 * self.t + 1):
                 # output result by setting the future value
                 if all_shares_valid and not output:
-                    int_shares = [int(shares[i]) for i in range(len(shares))]
-                    self.output_queue.put_nowait((dealer_id, avss_id, int_shares))
+                    #int_shares = [int(shares[i]) for i in range(len(shares))]
+                    #self.output_queue.put_nowait((dealer_id, avss_id, int_shares))
+                    self.output_queue.put_nowait((dealer_id, avss_id))
                     output = True
                     logger.debug("[%d] Output", self.my_id)
             # IMPLICATE
@@ -381,17 +382,21 @@ async def hbavssamtdummy_batch(test_router, params):
         for task in avss_tasks:
             task.cancel()
 
-
 @mark.parametrize(
     "t",
     [
         1,
         2,
+        3,
         5,
-        10,
+        8,
+        11,
+        16,
         21,
-        42,
-        85
+        27,
+        33,
+        38,
+        42
     ],
 )
 def test_hbavss_amt_end_to_end_time(test_router, benchmark, t):
@@ -409,17 +414,21 @@ def test_hbavss_amt_end_to_end_time(test_router, benchmark, t):
 
     benchmark(_prog)
 
-
 @mark.parametrize(
     "t",
     [
         1,
         2,
+        3,
         5,
-        10,
+        8,
+        11,
+        16,
         21,
-        42,
-        85
+        27,
+        33,
+        38,
+        42
     ],
 )
 def test_hbavss_polycommitloglin_end_to_end_time(test_router, benchmark, t):

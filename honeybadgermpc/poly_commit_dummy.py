@@ -34,7 +34,8 @@ class PolyCommitAMTDummy:
         n = 3 * t + 1
         numofverifiers = n
         amt_msg_length = 32 + (math.ceil(math.log2(n)) + 1) * 32
-        return [[self.get_random_bytes(amt_msg_length) * len(phis)] for _ in range(numofverifiers)]
+        random_msg = [self.get_random_bytes(amt_msg_length) * len(phis)]
+        return [random_msg for _ in range(numofverifiers)]
 
     def double_batch_create_witness(self, phis, r, n=None):
         return self.double_batch_create_witness_amt_bytes_generator(phis)
@@ -87,7 +88,8 @@ class PolyCommitLoglinDummy:
         polycommit_loglin_msg_length = 32 + \
                                        ((math.ceil(math.log2(t)) + 1) * 2 +
                                         (math.ceil(math.log2(t)) + 1) * (math.ceil(math.log2(n)) + 1)) * 32
-        return [[self.get_random_bytes(polycommit_loglin_msg_length) * len(phis)] for _ in range(numofverifiers)]
+        random_msg = [self.get_random_bytes(polycommit_loglin_msg_length) * len(phis)]
+        return [random_msg for _ in range(numofverifiers)]
 
     def double_batch_create_witness(self, phis, r, n=None):
         return self.double_batch_create_witness_polycommit_loglin_bytes_generator(phis)
