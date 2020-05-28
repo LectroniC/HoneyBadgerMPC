@@ -148,25 +148,30 @@ for item in header:
     if item == 'avg_verify_usec': ver_ind = i
     i+=1
 
-n_arr = [(entry[n_ind]) for entry in entries]
 ver_arr = [int(entry[ver_ind]) / 10**6 for entry in entries]
-n_arr = n_arr[:min(len(verifybatchtimes),len(ver_arr))]
+n_arr = [(entry[n_ind]) for entry in entries]
+
+plotting_ver_arr = []
+plotting_n_arr = []
+for elem in tvals_verifybatch:
+    index = n_arr.index(str(int(elem)*3+1))
+    plotting_ver_arr.append(ver_arr[index])
+plotting_n_arr = tvals_verifybatch
+
 n_pos = [i for i, _ in enumerate(n_arr)]
 pcl_pos = [i - width / 2 for i in n_pos]
 amt_pos = [i + width / 2 for i in n_pos]
 actual_ns_for_tvals_provebatch = [str(3 * int(t) + 1) for t in tvals_provebatch]
 
-
 print(n_arr)
 print(actual_ns_for_tvals_provebatch)
 
-#plt.bar(n_pos, ver_arr, width)
-plt.bar(pcl_pos, verifybatchtimes[:len(n_arr)], width, label="hb")
-plt.bar(amt_pos, ver_arr[:len(n_arr)], width, label="amt")
+plt.bar(pcl_pos, verifybatchtimes, width, label="hb")
+plt.bar(amt_pos, plotting_ver_arr, width, label="amt")
 plt.xlabel("Total recipients (n=3t+1)")
 plt.ylabel("Amortized verify time per proof (seconds)")
 plt.title("HbAVSS vs AMT Verifier Performance")
-plt.xticks(n_pos, n_arr)
+plt.xticks(n_pos, plotting_n_arr)
 plt.legend(loc="best")
 plt.savefig("pcl/pcl vs amt verifier", bbox_inches='tight')
 
@@ -198,8 +203,6 @@ plt.savefig("pcl/pcl vs amt verifier", bbox_inches='tight')
 
 
 plt.clf()
-n_arr = [(entry[n_ind]) for entry in entries]
-n_arr = n_arr[:min(len(provebatchtimes),len(deal_arr))]
 deal_arr = [int(entry[deal_ind]) / (10**6.0) / int(n_arr[i]) for i, entry in enumerate(entries)]
 n_pos = [i for i, _ in enumerate(n_arr)]
 pcl_pos = [i - width / 2 for i in n_pos]
@@ -208,12 +211,18 @@ n_vals = [str(3 * int(t) + 1) for t in tvals_provebatch]
 n_pos = [i for i, _ in enumerate(n_vals)]
 pcl_pos = [i - width / 2 for i in n_pos]
 amt_pos = [i + width / 2 for i in n_pos]
+
+plotting_deal_arr = []
+for elem in tvals_provebatch:
+    index = n_arr.index(str(int(elem)*3+1))
+    plotting_deal_arr.append(deal_arr[index])
+
 plt.bar(pcl_pos, provebatchtimes, width, label="hb")
-plt.bar(amt_pos, deal_arr[:len(n_arr)], width, label="amt")
+plt.bar(amt_pos, plotting_deal_arr, width, label="amt")
 plt.xlabel("Total recipients (n=3t+1)")
 plt.ylabel("Amortized generation time per proof (seconds)")
 plt.title("HbAVSS vs AMT VSS Dealer Performance")
-plt.xticks(n_pos, n_vals)
+plt.xticks(n_pos, plotting_n_arr)
 plt.legend(loc="best")
 plt.savefig("pcl/pcl vs amt dealer", bbox_inches='tight')
 
@@ -239,7 +248,7 @@ n_vals = [str(3 * int(t) + 1) for t in tvals_hbavss_amt_benchmark]
 n_pos = [i for i, _ in enumerate(n_vals)]
 
 pcl_vssr_pos = [i + width / 2 for i in n_pos]
-amt_vssr_pos = [i + width / 2 for i in n_pos]
+amt_vssr_pos = [i - width / 2 for i in n_pos]
 
 hbavss_polycommitloglin_e2e = []
 hbavss_amt_e2e = []
@@ -248,7 +257,7 @@ vssr_amt_e2e = []
 
 for i, _ in enumerate(n_vals):
     pcl_dpv = provebatchtimes[i] + verifybatchtimes[i]
-    amt_dpv = amtdealtimes[i] + ver_arr[i]
+    amt_dpv = plotting_deal_arr[i] + plotting_ver_arr[i]
     vssr_polycommitloglin_e2e.append(pcl_dpv)
     vssr_amt_e2e.append(amt_dpv)
 
