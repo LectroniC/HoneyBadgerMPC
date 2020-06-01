@@ -126,6 +126,8 @@ class HbAvssBatchDummy:
             for i in range(self.n):
                 send(i, msg)
 
+        ok_sent = False
+        implicate_sent = False
         # get phi and public key from reliable broadcast msg
         commitments, ephemeral_public_key = loads(rbc_msg)
         # retrieve the z
@@ -146,19 +148,24 @@ class HbAvssBatchDummy:
         except ValueError as e:  # TODO: more specific exception
             logger.warn(f"Implicate due to failure in decrypting: {e}")
             all_shares_valid = False
-            multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+            if not implicate_sent:
+                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+            implicate_sent = True
 
         # call if decryption was successful
         if all_shares_valid:
             if not self.poly_commit.batch_verify_eval(
                     commitments, self.my_id + 1, shares, witnesses
             ):
-                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                if not implicate_sent:
+                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                    implicate_sent = True
                 all_shares_valid = False
-        if all_shares_valid:
+        if all_shares_valid and not ok_sent:
             logger.debug("[%d] OK", self.my_id)
             logger.info(f"OK_timestamp: {time.time()}")
             multicast((HbAVSSMessageType.OK, ""))
+            ok_sent = True
 
         ok_set = set()
         ready_set = set()
@@ -169,6 +176,7 @@ class HbAvssBatchDummy:
         in_share_recovery = False
         ready_sent = False
         interpolated = False
+        kdi_broadcast_sent = False
 
         while True:
             # Bracha-style agreement
@@ -178,15 +186,15 @@ class HbAvssBatchDummy:
                 # logger.debug("[%d] Received OK from [%d]", self.my_id, sender)
                 ok_set.add(sender)
                 if len(ok_set) >= (2 * self.t + 1) and not ready_sent:
-                    ready_sent = True
                     multicast((HbAVSSMessageType.READY, ""))
+                    ready_sent = True
             # READY
             if avss_msg[0] == HbAVSSMessageType.READY and (sender not in ready_set):
                 # logger.debug("[%d] Received READY from [%d]", self.my_id, sender)
                 ready_set.add(sender)
                 if len(ready_set) >= (self.t + 1) and not ready_sent:
-                    ready_sent = True
                     multicast((HbAVSSMessageType.READY, ""))
+                    ready_sent = True
             # if 2t+1 ready -> output shares
             if len(ready_set) >= (2 * self.t + 1):
                 # output result by setting the future value
@@ -218,10 +226,11 @@ class HbAvssBatchDummy:
                     in_share_recovery = True
                 # logger.debug("[%d] after implication", self.my_id)
 
-            if in_share_recovery and all_shares_valid:
+            if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
                 kdi = pow(ephemeral_public_key, self.private_key)
                 # The third value doesn't matter
                 multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
+                kdi_broadcast_sent = True
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                 retrieved_msg = await avid.retrieve(tag, sender)
@@ -238,7 +247,7 @@ class HbAvssBatchDummy:
                         saved_shares[sender] = j_shares
 
             # if t+1 in the saved_set, interpolate and sell all OK
-            if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated:
+            if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated and not ok_sent:
                 # Batch size
                 shares = []
                 for i in range(secret_count):
@@ -250,6 +259,7 @@ class HbAvssBatchDummy:
                 all_shares_valid = True
                 interpolated = True
                 multicast((HbAVSSMessageType.OK, ""))
+                ok_sent = True
             # The only condition where we can terminate
             if (
                     (len(ready_set) >= 2 * self.t + 1 and output)
@@ -356,7 +366,6 @@ class HbAvssBatchDummy:
         # avss processing
         await self._process_avss_msg(avss_id, dealer_id, rbc_msg, avid)
 
-"""
 async def hbavssamtdummy_batch(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values, pc) = params
     sends, recvs, _ = benchmark_router(n)
@@ -446,7 +455,6 @@ def test_hbavss_polycommitloglin_end_to_end_time(benchmark_router, benchmark, t)
         loop.run_until_complete(hbavssamtdummy_batch(benchmark_router, params))
 
     benchmark(_prog)
-"""
 
 
 async def hbavss_worst_case(benchmark_router, params):
@@ -461,6 +469,8 @@ async def hbavss_worst_case(benchmark_router, params):
                 for i in range(self.n):
                     send(i, msg)
 
+            ok_sent = False
+            implicate_sent = False
             # get phi and public key from reliable broadcast msg
             commitments, ephemeral_public_key = loads(rbc_msg)
             # retrieve the z
@@ -471,7 +481,6 @@ async def hbavss_worst_case(benchmark_router, params):
 
             # all_encrypted_witnesses: n
             shared_key = pow(ephemeral_public_key, self.private_key)
-
             shares = [None] * secret_count
             witnesses = [None] * secret_count
             # Decrypt
@@ -481,19 +490,24 @@ async def hbavss_worst_case(benchmark_router, params):
             except ValueError as e:  # TODO: more specific exception
                 logger.warn(f"Implicate due to failure in decrypting: {e}")
                 all_shares_valid = False
-                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                if not implicate_sent:
+                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                    implicate_sent = True
 
             # call if decryption was successful
             if all_shares_valid:
                 if not self.poly_commit.batch_verify_eval(
                         commitments, self.my_id + 1, shares, witnesses
                 ):
-                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                    if not implicate_sent:
+                        multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                        implicate_sent = True
                     all_shares_valid = False
             if all_shares_valid:
                 logger.debug("[%d] OK", self.my_id)
                 logger.info(f"OK_timestamp: {time.time()}")
                 multicast((HbAVSSMessageType.OK, ""))
+                ok_sent = True
 
             ok_set = set()
             ready_set = set()
@@ -505,6 +519,7 @@ async def hbavss_worst_case(benchmark_router, params):
             ready_sent = False
             interpolated = False
             benchmark_retry_commitments = None
+            kdi_broadcast_sent = False
 
             logger.debug("[%d] Entering receiving loop", self.my_id)
             while True:
@@ -515,16 +530,16 @@ async def hbavss_worst_case(benchmark_router, params):
                     logger.debug("[%d] Received OK from [%d]", self.my_id, sender)
                     ok_set.add(sender)
                     if len(ok_set) >= (2 * self.t + 1) and not ready_sent:
-                        ready_sent = True
                         multicast((HbAVSSMessageType.READY, ""))
+                        ready_sent = True
                 # READY
                 if avss_msg[0] == HbAVSSMessageType.READY and (sender not in ready_set):
                     logger.debug("[%d] Received READY from [%d]", self.my_id, sender)
                     ready_set.add(sender)
                     if len(ready_set) >= (self.t + 1) and not ready_sent:
-                        ready_sent = True
                         logger.debug("[%d] Sent out ready", self.my_id)
                         multicast((HbAVSSMessageType.READY, ""))
+                        ready_sent = True
                 # if 2t+1 ready -> output shares
                 if len(ready_set) >= (2 * self.t + 1):
                     # output result by setting the future value
@@ -544,9 +559,10 @@ async def hbavss_worst_case(benchmark_router, params):
                     # proceed to share recovery
                     in_share_recovery = True
 
-                if in_share_recovery and all_shares_valid:
+                if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
                     kdi = pow(ephemeral_public_key, self.private_key)
                     multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
+                    kdi_broadcast_sent = True
 
                 if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                     retrieved_msg = await avid.retrieve(tag, sender)
@@ -565,7 +581,7 @@ async def hbavss_worst_case(benchmark_router, params):
                     # logger.debug("[%d] on finishing kdi broadcast implication", self.my_id)
 
                 # if t+1 in the saved_set, interpolate and sell all OK
-                if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated:
+                if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated and not ok_sent:
                     logger.debug("[%d] got t shared correct", self.my_id)
                     (commitments, sender_p_1, j_shares, j_witnesses) = benchmark_retry_commitments
                     for _ in range(t):
@@ -583,6 +599,7 @@ async def hbavss_worst_case(benchmark_router, params):
                     interpolated = True
                     logger.debug("[%d] Multicast OK", self.my_id)
                     multicast((HbAVSSMessageType.OK, ""))
+                    ok_sent = True
                     logger.debug("[%d] share recovery interpolated and sent OK", self.my_id)
 
                 # The only condition where we can terminate
@@ -601,6 +618,8 @@ async def hbavss_worst_case(benchmark_router, params):
                 for i in range(self.n):
                     send(i, msg)
 
+            ok_sent = False
+            implicate_sent = False
             # get phi and public key from reliable broadcast msg
             commitments, ephemeral_public_key = loads(rbc_msg)
             # retrieve the z
@@ -621,7 +640,9 @@ async def hbavss_worst_case(benchmark_router, params):
             except ValueError as e:  # TODO: more specific exception
                 logger.warn(f"Implicate due to failure in decrypting: {e}")
                 all_shares_valid = False
-                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                if not implicate_sent:
+                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                    implicate_sent = True
 
             # call if decryption was successful
             if all_shares_valid:
@@ -631,12 +652,15 @@ async def hbavss_worst_case(benchmark_router, params):
                 # Faulty players always implicate
                 if True:
                     logger.debug("[%d] Send out faulty implicate", self.my_id)
-                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                    if not implicate_sent:
+                        multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                        implicate_sent = True
                     all_shares_valid = False
-            if all_shares_valid:
+            if all_shares_valid and not ok_sent:
                 logger.debug("[%d] OK", self.my_id)
                 logger.info(f"OK_timestamp: {time.time()}")
                 multicast((HbAVSSMessageType.OK, ""))
+                ok_sent = True
 
             self.output_queue.put_nowait((self.my_id))
             logger.debug("[%d] Output", self.my_id)
@@ -668,9 +692,14 @@ async def hbavss_worst_case(benchmark_router, params):
         for task in avss_tasks:
             task.cancel()
 
+
 @mark.parametrize(
     "t",
     [
+        1,
+        2,
+        3,
+        5,
         8,
         11,
         16,
