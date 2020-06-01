@@ -231,6 +231,7 @@ class HbAvssBatchDummy:
                 # The third value doesn't matter
                 multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
                 kdi_broadcast_sent = True
+                in_share_recovery = False
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                 retrieved_msg = await avid.retrieve(tag, sender)
@@ -563,6 +564,7 @@ async def hbavss_worst_case(benchmark_router, params):
                     kdi = pow(ephemeral_public_key, self.private_key)
                     multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
                     kdi_broadcast_sent = True
+                    in_share_recovery = False
 
                 if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                     retrieved_msg = await avid.retrieve(tag, sender)
