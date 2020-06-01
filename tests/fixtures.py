@@ -64,7 +64,7 @@ def polynomial(galois_field):
 
 @fixture
 def rust_field():
-    #from honeybadgermpc.betterpairing import ZR
+    # from honeybadgermpc.betterpairing import ZR
     from pypairing import ZR
 
     return ZR
@@ -127,7 +127,6 @@ class TestRouter(SimpleRouter):
             delay, super().send, player_id, dest_id, message
         )
 
-
 @fixture
 def test_router():
     def _test_router(n, maxdelay=0.005, seed=None):
@@ -138,6 +137,43 @@ def test_router():
         return router.sends, router.recvs, router.broadcasts
 
     return _test_router
+
+
+class WorseCaseRouter(SimpleRouter):
+    def __init__(self, num_parties, max_delay=0.005, seed=None):
+        super().__init__(num_parties)
+        self.rnd = random.Random(seed)
+        self.max_delay = max_delay
+
+    #Use list append(
+    def send(self, player_id: int, dest_id: int, message: object):
+        """Overridden to introduce delays.
+        """
+        delay = self.rnd.random() * self.max_delay
+        asyncio.get_event_loop().call_later(
+            delay, super().send, player_id, dest_id, message
+        )
+
+@fixture
+def worst_case_router():
+    def _worst_case_router(n):
+        """Builds a set of connected channels, with random delay
+        @return (receives, sends)
+        """
+        router = SimpleRouter(n)
+        return router.sends, router.recvs, router.broadcasts
+    return worst_case_router
+
+@fixture
+def benchmark_router():
+    def _benchmark_router(n):
+        """Builds a set of connected channels, with random delay
+        @return (receives, sends)
+        """
+        router = SimpleRouter(n)
+        return router.sends, router.recvs, router.broadcasts
+
+    return _benchmark_router
 
 
 def _preprocess(n, t, k, to_generate):

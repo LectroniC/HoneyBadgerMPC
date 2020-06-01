@@ -704,7 +704,6 @@ class HbAvssBatchLoglin:
             self.poly_commit = PolyCommitLog(crs=None, degree_max=t)
             #self.poly_commit.preprocess_prover()
             #self.poly_commit.preprocess_verifier()
-
         self.avid_msg_queue = asyncio.Queue()
         self.tasks = []
         self.shares_future = asyncio.Future()
@@ -931,8 +930,10 @@ class HbAvssBatchLoglin:
         # Sample B random degree-(t) polynomials of form φ(·)
         # such that each φ_i(0) = si and φ_i(j) is Pj’s share of si
         # The same as B (batch_size)
+        """
         while len(values) % (batch_size) != 0:
             values.append(0)
+        """
         secret_count = len(values)
         phi = [None] * secret_count
         commitments = [None] * secret_count
@@ -994,7 +995,7 @@ class HbAvssBatchLoglin:
         if self.my_id == dealer_id:
             # broadcast_msg: phi & public key for reliable broadcast
             # dispersal_msg_list: the list of payload z
-            broadcast_msg, dispersal_msg_list = self._get_dealer_msg(values, n, self.t + 1)
+            broadcast_msg, dispersal_msg_list = self._get_dealer_msg(values, n, len(values))
 
         tag = f"{dealer_id}-{avss_id}-B-RBC"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)

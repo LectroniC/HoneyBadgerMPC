@@ -1,5 +1,5 @@
 #!/bin/bash
 rm /usr/src/HoneyBadgerMPC/.benchmarks/Linux-CPython-3.7-64bit/0001_pclog.json
-pytest --benchmark-save=pclog benchmark/test_benchmark_poly_commit_log.py
-rm /usr/src/HoneyBadgerMPC/.benchmarks/Linux-CPython-3.7-64bit/0002_hbavss_loglin.json
-pytest -vs --benchmark-save=hbavss_loglin --benchmark-min-rounds=1 benchmark/test_benchmark_hbavss_loglin.py
+pytest --benchmark-save=pclog --benchmark-min-rounds=5 benchmark/test_benchmark_poly_commit_log.py
+rm /usr/src/HoneyBadgerMPC/.benchmarks/Linux-CPython-3.7-64bit/0001_hbavss_loglin.json
+pytest --benchmark-save=hbavss_loglin --benchmark-min-rounds=5 benchmark/test_benchmark_hbavss_loglin.py

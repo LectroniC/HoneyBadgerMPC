@@ -1,0 +1,108 @@
+{
+    "machine_info": {
+        "node": "428d83441223",
+        "processor": "",
+        "machine": "x86_64",
+        "python_compiler": "GCC 6.3.0 20170516",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.7.3",
+        "python_version": "3.7.3",
+        "python_build": [
+            "default",
+            "Jun 11 2019 01:11:15"
+        ],
+        "release": "4.19.76-linuxkit",
+        "system": "Linux",
+        "cpu": {
+            "vendor_id": "AuthenticAMD",
+            "hardware": "unknown",
+            "brand": "AMD Ryzen 7 3700X 8-Core Processor"
+        }
+    },
+    "commit_info": {
+        "id": "unversioned",
+        "time": null,
+        "author_time": null,
+        "dirty": false,
+        "project": "HoneyBadgerMPC",
+        "branch": "(unknown)"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time_worst_case[1]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time_worst_case[1]",
+            "params": {
+                "t": 1
+            },
+            "param": "1",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.13567269896157086,
+                "max": 0.1451377000194043,
+                "mean": 0.1405109498106564,
+                "stddev": 0.003239290004236597,
+                "rounds": 6,
+                "median": 0.1410018999595195,
+                "iqr": 0.003625700017437339,
+                "q1": 0.13831289997324347,
+                "q3": 0.1419385999906808,
+                "iqr_outliers": 0,
+                "stddev_outliers": 2,
+                "outliers": "2;0",
+                "ld15iqr": 0.13567269896157086,
+                "hd15iqr": 0.1451377000194043,
+                "ops": 7.116883071017143,
+                "total": 0.8430656988639385,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time_worst_case[2]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time_worst_case[2]",
+            "params": {
+                "t": 2
+            },
+            "param": "2",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.7118204981088638,
+                "max": 0.7355375969782472,
+                "mean": 0.7236790475435555,
+                "stddev": 0.016770521440612755,
+                "rounds": 2,
+                "median": 0.7236790475435555,
+                "iqr": 0.023717098869383335,
+                "q1": 0.7118204981088638,
+                "q3": 0.7355375969782472,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 0.7118204981088638,
+                "hd15iqr": 0.7355375969782472,
+                "ops": 1.381828040198737,
+                "total": 1.447358095087111,
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2020-05-31T17:21:37.284136",
+    "version": "3.2.3"
+}
