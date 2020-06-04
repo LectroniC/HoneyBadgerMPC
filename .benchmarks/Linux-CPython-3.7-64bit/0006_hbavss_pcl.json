@@ -1,0 +1,478 @@
+{
+    "machine_info": {
+        "node": "428d83441223",
+        "processor": "",
+        "machine": "x86_64",
+        "python_compiler": "GCC 6.3.0 20170516",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.7.3",
+        "python_version": "3.7.3",
+        "python_build": [
+            "default",
+            "Jun 11 2019 01:11:15"
+        ],
+        "release": "4.19.76-linuxkit",
+        "system": "Linux",
+        "cpu": {
+            "vendor_id": "AuthenticAMD",
+            "hardware": "unknown",
+            "brand": "AMD Ryzen 7 3700X 8-Core Processor"
+        }
+    },
+    "commit_info": {
+        "id": "unversioned",
+        "time": null,
+        "author_time": null,
+        "dirty": false,
+        "project": "HoneyBadgerMPC",
+        "branch": "(unknown)"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[1]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[1]",
+            "params": {
+                "t": 1
+            },
+            "param": "1",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.04046230111271143,
+                "max": 0.061704302206635475,
+                "mean": 0.043864476145245135,
+                "stddev": 0.004846469965535131,
+                "rounds": 20,
+                "median": 0.042577001033350825,
+                "iqr": 0.002092599868774414,
+                "q1": 0.041349751176312566,
+                "q3": 0.04344235104508698,
+                "iqr_outliers": 3,
+                "stddev_outliers": 3,
+                "outliers": "3;3",
+                "ld15iqr": 0.04046230111271143,
+                "hd15iqr": 0.04927200125530362,
+                "ops": 22.797490996786905,
+                "total": 0.8772895229049027,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[2]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[2]",
+            "params": {
+                "t": 2
+            },
+            "param": "2",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.07376060169190168,
+                "max": 0.09409020189195871,
+                "mean": 0.07835983744423304,
+                "stddev": 0.005141117924359292,
+                "rounds": 14,
+                "median": 0.07775420160032809,
+                "iqr": 0.004128799773752689,
+                "q1": 0.07474880199879408,
+                "q3": 0.07887760177254677,
+                "iqr_outliers": 1,
+                "stddev_outliers": 1,
+                "outliers": "1;1",
+                "ld15iqr": 0.07376060169190168,
+                "hd15iqr": 0.09409020189195871,
+                "ops": 12.761639541578655,
+                "total": 1.0970377242192626,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[3]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[3]",
+            "params": {
+                "t": 3
+            },
+            "param": "3",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.1119302031584084,
+                "max": 0.13994169933721423,
+                "mean": 0.12032276743816005,
+                "stddev": 0.008205204816665266,
+                "rounds": 9,
+                "median": 0.12084440188482404,
+                "iqr": 0.006130177993327379,
+                "q1": 0.1151222741464153,
+                "q3": 0.12125245213974267,
+                "iqr_outliers": 1,
+                "stddev_outliers": 2,
+                "outliers": "2;1",
+                "ld15iqr": 0.1119302031584084,
+                "hd15iqr": 0.13994169933721423,
+                "ops": 8.310979054848872,
+                "total": 1.0829049069434404,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[5]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[5]",
+            "params": {
+                "t": 5
+            },
+            "param": "5",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.2033833982422948,
+                "max": 0.2520663980394602,
+                "mean": 0.21940749837085605,
+                "stddev": 0.019964229652656335,
+                "rounds": 5,
+                "median": 0.21037659887224436,
+                "iqr": 0.02560557413380593,
+                "q1": 0.20583259873092175,
+                "q3": 0.23143817286472768,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 0.2033833982422948,
+                "hd15iqr": 0.2520663980394602,
+                "ops": 4.557729373085229,
+                "total": 1.0970374918542802,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[8]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[8]",
+            "params": {
+                "t": 8
+            },
+            "param": "8",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.3872018977999687,
+                "max": 0.42494159704074264,
+                "mean": 0.40380826390658814,
+                "stddev": 0.01927281239329927,
+                "rounds": 3,
+                "median": 0.3992812968790531,
+                "iqr": 0.028304774430580437,
+                "q1": 0.3902217475697398,
+                "q3": 0.41852652200032026,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 0.3872018977999687,
+                "hd15iqr": 0.42494159704074264,
+                "ops": 2.4764228208844363,
+                "total": 1.2114247917197645,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[11]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[11]",
+            "params": {
+                "t": 11
+            },
+            "param": "11",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.6943795951083302,
+                "max": 0.6959488950669765,
+                "mean": 0.6951642450876534,
+                "stddev": 0.0011096626424745655,
+                "rounds": 2,
+                "median": 0.6951642450876534,
+                "iqr": 0.0015692999586462975,
+                "q1": 0.6943795951083302,
+                "q3": 0.6959488950669765,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 0.6943795951083302,
+                "hd15iqr": 0.6959488950669765,
+                "ops": 1.4385089668613635,
+                "total": 1.3903284901753068,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[16]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[16]",
+            "params": {
+                "t": 16
+            },
+            "param": "16",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 1.2936458052136004,
+                "max": 1.2936458052136004,
+                "mean": 1.2936458052136004,
+                "stddev": 0,
+                "rounds": 1,
+                "median": 1.2936458052136004,
+                "iqr": 0.0,
+                "q1": 1.2936458052136004,
+                "q3": 1.2936458052136004,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 1.2936458052136004,
+                "hd15iqr": 1.2936458052136004,
+                "ops": 0.7730091157640209,
+                "total": 1.2936458052136004,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[21]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[21]",
+            "params": {
+                "t": 21
+            },
+            "param": "21",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 2.4404783081263304,
+                "max": 2.4404783081263304,
+                "mean": 2.4404783081263304,
+                "stddev": 0,
+                "rounds": 1,
+                "median": 2.4404783081263304,
+                "iqr": 0.0,
+                "q1": 2.4404783081263304,
+                "q3": 2.4404783081263304,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 2.4404783081263304,
+                "hd15iqr": 2.4404783081263304,
+                "ops": 0.40975574200769965,
+                "total": 2.4404783081263304,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[27]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[27]",
+            "params": {
+                "t": 27
+            },
+            "param": "27",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 4.265908742789179,
+                "max": 4.265908742789179,
+                "mean": 4.265908742789179,
+                "stddev": 0,
+                "rounds": 1,
+                "median": 4.265908742789179,
+                "iqr": 0.0,
+                "q1": 4.265908742789179,
+                "q3": 4.265908742789179,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 4.265908742789179,
+                "hd15iqr": 4.265908742789179,
+                "ops": 0.23441664139917115,
+                "total": 4.265908742789179,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[33]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[33]",
+            "params": {
+                "t": 33
+            },
+            "param": "33",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 7.158705627080053,
+                "max": 7.158705627080053,
+                "mean": 7.158705627080053,
+                "stddev": 0,
+                "rounds": 1,
+                "median": 7.158705627080053,
+                "iqr": 0.0,
+                "q1": 7.158705627080053,
+                "q3": 7.158705627080053,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 7.158705627080053,
+                "hd15iqr": 7.158705627080053,
+                "ops": 0.13969005740607435,
+                "total": 7.158705627080053,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[38]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[38]",
+            "params": {
+                "t": 38
+            },
+            "param": "38",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 10.119286284316331,
+                "max": 10.119286284316331,
+                "mean": 10.119286284316331,
+                "stddev": 0,
+                "rounds": 1,
+                "median": 10.119286284316331,
+                "iqr": 0.0,
+                "q1": 10.119286284316331,
+                "q3": 10.119286284316331,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 10.119286284316331,
+                "hd15iqr": 10.119286284316331,
+                "ops": 0.09882119864025182,
+                "total": 10.119286284316331,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbavss_polycommitloglin_end_to_end_time[42]",
+            "fullname": "benchmark/test_benchmark_hbavss_loglin.py::test_hbavss_polycommitloglin_end_to_end_time[42]",
+            "params": {
+                "t": 42
+            },
+            "param": "42",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 1,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 12.935982058756053,
+                "max": 12.935982058756053,
+                "mean": 12.935982058756053,
+                "stddev": 0,
+                "rounds": 1,
+                "median": 12.935982058756053,
+                "iqr": 0.0,
+                "q1": 12.935982058756053,
+                "q3": 12.935982058756053,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 12.935982058756053,
+                "hd15iqr": 12.935982058756053,
+                "ops": 0.07730375594662518,
+                "total": 12.935982058756053,
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2020-06-01T18:11:31.497118",
+    "version": "3.2.3"
+}
