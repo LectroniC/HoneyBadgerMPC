@@ -78,6 +78,16 @@ class PolyCommitLoglinDummy:
     def batch_create_witness(self, phi, r, n=None):
         pass
 
+    def num_calc(self, n):
+        if n == 1:
+            return 1
+        if n == 0:
+            return 0
+        if n%2 == 1:
+            return self.num_calc(int(n/2)) + 3
+        else:
+            return self.num_calc(int(n/2)) + 2
+
     # Polycommitloglin's share is 32 bytes
     # Polycommitloglin's proof is log2(t)*2*32 + log2(n)*log2(t)*32
     # We are comparing under n = 3 * t + 1
@@ -85,9 +95,8 @@ class PolyCommitLoglinDummy:
         t = len(phis[0].coeffs) - 1
         n = 3 * t + 1
         numofverifiers = n
-        polycommit_loglin_msg_length = 32 + \
-                                       ((math.ceil(math.log2(t)) + 1) * 2 +
-                                        (math.ceil(math.log2(t)) + 1) * (math.ceil(math.log2(n)) + 1)) * 32
+        #polycommit_loglin_msg_length = 32 + (math.ceil(math.log2(t)) + 1) * 2 * 32
+        polycommit_loglin_msg_length = 32 + self.num_calc(n) * 32
         random_msg = [self.get_random_bytes(polycommit_loglin_msg_length) * len(phis)]
         return [random_msg for _ in range(numofverifiers)]
 

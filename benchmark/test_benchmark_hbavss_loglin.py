@@ -23,8 +23,6 @@ logger.setLevel(logging.WARNING)
 
 # Uncomment this when you want logs from this file.
 # logger.setLevel(logging.NOTSET)
-
-
 def get_avss_params(n, t):
     g, h = G1.rand(), G1.rand()
     public_keys, private_keys = [None] * n, [None] * n
@@ -114,9 +112,10 @@ class HbAvssBatchDummy:
         except Exception as e:  # TODO specific exception
             logger.warn("Implicate confirmed, bad encryption:", e)
             return True
-        return not self.poly_commit.batch_verify_eval(
+        self.poly_commit.batch_verify_eval(
             commitments, j + 1, j_shares, j_witnesses
         )
+        return False
 
     async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
         tag = f"{dealer_id}-{avss_id}-B-AVSS"
@@ -367,6 +366,7 @@ class HbAvssBatchDummy:
         # avss processing
         await self._process_avss_msg(avss_id, dealer_id, rbc_msg, avid)
 
+
 async def hbavssamtdummy_batch(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values, pc) = params
     sends, recvs, _ = benchmark_router(n)
@@ -458,7 +458,7 @@ def test_hbavss_polycommitloglin_end_to_end_time(benchmark_router, benchmark, t)
     benchmark(_prog)
 
 
-async def hbavss_best_case_amt(benchmark_router, params):
+async def hbavss_implicate_case_amt(benchmark_router, params):
     from pypairing import G1, ZR
 
     class HbAvssBatchLoglinDummyWorstCaseNonFaulty(HbAvssBatchDummy):
@@ -667,7 +667,6 @@ async def hbavss_best_case_amt(benchmark_router, params):
 
             self.output_queue.put_nowait((self.my_id))
             logger.debug("[%d] Output", self.my_id)
-
     (t, n, g, h, pks, sks, crs, values) = params
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
@@ -713,7 +712,7 @@ async def hbavss_best_case_amt(benchmark_router, params):
         42
     ],
 )
-def test_hbavss_end_to_end_time_best_case_amt(benchmark_router, benchmark, t):
+def test_hbavss_end_to_end_time_implicate_case_amt(benchmark_router, benchmark, t):
     from pypairing import G1, ZR
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
@@ -723,13 +722,13 @@ def test_hbavss_end_to_end_time_best_case_amt(benchmark_router, benchmark, t):
     params = (t, n, g, h, pks, sks, crs, values)
 
     def _prog():
-        loop.run_until_complete(hbavss_best_case_amt(benchmark_router, params))
+        loop.run_until_complete(hbavss_implicate_case_amt(benchmark_router, params))
 
     benchmark(_prog)
-    #benchmark(time.sleep,5)
+    # benchmark(time.sleep,5)
 
 
-async def hbavss_best_case_pcl(benchmark_router, params):
+async def hbavss_implicate_case_pcl(benchmark_router, params):
     from pypairing import G1, ZR
 
     class HbAvssBatchLoglinDummyWorstCaseNonFaulty(HbAvssBatchDummy):
@@ -984,7 +983,7 @@ async def hbavss_best_case_pcl(benchmark_router, params):
         42
     ],
 )
-def test_hbavss_end_to_end_time_best_case_pcl(benchmark_router, benchmark, t):
+def test_hbavss_end_to_end_time_implicate_case_pcl(benchmark_router, benchmark, t):
     from pypairing import G1, ZR
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
@@ -994,6 +993,6 @@ def test_hbavss_end_to_end_time_best_case_pcl(benchmark_router, benchmark, t):
     params = (t, n, g, h, pks, sks, crs, values)
 
     def _prog():
-        loop.run_until_complete(hbavss_best_case_pcl(benchmark_router, params))
+        loop.run_until_complete(hbavss_implicate_case_pcl(benchmark_router, params))
 
     benchmark(_prog)

@@ -76,6 +76,49 @@ def test_benchmark_verify_10_polys(benchmark, t):
 """
 
 
+
+# @mark.parametrize("t", [1,
+# 2,
+# 3,
+# 4,
+# 5,
+# 6,
+# 7,
+# 8,
+# 9,
+# 10,
+# 11,
+# 12,
+# 13,
+# 14,
+# 15,
+# 16,
+# 17,
+# 18,
+# 19,
+# 20,
+# 21,
+# 22,
+# 23,
+# 24,
+# 25,
+# 26,
+# 27,
+# 28,
+# 29,
+# 30,
+# 31,
+# 32,
+# 33,
+# 34,
+# 35,
+# 36,
+# 37,
+# 38,
+# 39,
+# 40,
+# 41,
+# 42])
 @mark.parametrize("t", [1,
                         2,
                         3,
@@ -107,19 +150,6 @@ def test_benchmark_batch_verify(benchmark, t):
         phis_at_4.append(phis[j](i))
     # assert pc.batch_verify_eval(cs, i, phis_at_4, witnesses[i-1])
     benchmark(pc.batch_verify_eval, cs, i, phis_at_4, witnesses[i - 1])
-
-
-'''@mark.parametrize("t", [1, 2, 5, 11, 21, 33])
-def test_benchmark_batch_creation(benchmark, t):
-    pc = PolyCommitLog(degree_max=t)
-    pc.preprocess_prover()
-    r = ZR.random()
-    phis = []
-    for _ in range(3 * t + 1):
-        phi_curr = polynomials_over(ZR).random(t)
-        phis.append(phi_curr)
-    benchmark(pc.double_batch_create_witness, phis, r)'''
-
 
 @mark.parametrize("t", [1,
                         2,
