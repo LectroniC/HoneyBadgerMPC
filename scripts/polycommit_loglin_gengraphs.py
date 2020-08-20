@@ -10,6 +10,7 @@ def dehumanize_time(timestr):
     if timestr[-2:] == 'ms':
         return float(timestr[0:-3])/10**3
 
+
 # Larger graph for detailed profiling
 # plt.figure(figsize=(17, 3))
 plt.figure(figsize=(10, 3))
@@ -51,11 +52,15 @@ for entry in logbenchmarks:
 
 
 provebatchtimes = [i * 1000.0 for i in provebatchtimes]
+provebatchtimes_yerr = [i * 1000.0 for i in provebatchtimes_yerr]
 verifybatchtimes = [i * 1000.0 for i in verifybatchtimes]
+verifybatchtimes_yerr = [i * 1000.0 for i in verifybatchtimes_yerr]
 polytimes = [i * 1000.0 for i in polytimes]
 
 hbavss_amt_overhead = []
+hbavss_amt_overhead_yerr = []
 hbavss_polycommitloglin_overhead = []
+hbavss_polycommitloglin_overhead_yerr = []
 tvals_hbavss_amt_benchmark = []
 tvals_hbavss_polycommitloglin_benchmark = []
 
@@ -68,10 +73,14 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbavss_polycommitloglin_overhead.append(
             entry["stats"]["mean"] / ((3*t+1)**2))
+        hbavss_polycommitloglin_overhead_yerr.append(
+            entry["stats"]["stddev"]*2 / ((3*t+1)**2))
         tvals_hbavss_polycommitloglin_benchmark.append(str(t))
 
 hbavss_polycommitloglin_overhead = [
     i * 1000.0 for i in hbavss_polycommitloglin_overhead]
+hbavss_polycommitloglin_overhead_yerr = [
+    i * 1000.0 for i in hbavss_polycommitloglin_overhead_yerr]
 
 with open(".benchmarks/Linux-CPython-3.7-64bit/0002_hbavss_amt.json", "r") as file:
     logdata = file.read().replace("\n", "")
@@ -82,11 +91,15 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbavss_amt_overhead.append(
             entry["stats"]["mean"] / ((3*t+1) ** 2))
+        hbavss_amt_overhead_yerr.append(
+            entry["stats"]["stddev"]*2 / ((3*t+1)**2))
         tvals_hbavss_amt_benchmark.append(str(t))
 
 hbavss_amt_overhead = [i * 1000.0 for i in hbavss_amt_overhead]
+hbavss_amt_overhead_yerr = [i * 1000.0 for i in hbavss_amt_overhead_yerr]
 
 hbavss_pcl_implicate_case_overhead = []
+hbavss_pcl_implicate_case_overhead_yerr = []
 tvals_hbavss_pcl_implicate_case_benchmark = []
 with open(".benchmarks/Linux-CPython-3.7-64bit/0005_hbavss_implicate_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
@@ -97,10 +110,12 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbavss_pcl_implicate_case_overhead.append(
             entry["stats"]["mean"] / ((3*t+1) ** 2))
+        hbavss_pcl_implicate_case_overhead_yerr.append(entry["stats"]["stddev"]*2 / ((3*t+1)**2))
         tvals_hbavss_pcl_implicate_case_benchmark.append(str(t))
 
 
 hbavss_amt_implicate_case_overhead = []
+hbavss_amt_implicate_case_overhead_yerr = []
 tvals_hbavss_amt_implicate_case_benchmark = []
 with open(".benchmarks/Linux-CPython-3.7-64bit/0004_hbavss_implicate_amt.json", "r") as file:
     logdata = file.read().replace("\n", "")
@@ -111,12 +126,17 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbavss_amt_implicate_case_overhead.append(
             entry["stats"]["mean"] / ((3*t+1) ** 2))
+        hbavss_amt_implicate_case_overhead_yerr.append(entry["stats"]["stddev"]*2 / ((3*t+1)**2))
         tvals_hbavss_amt_implicate_case_benchmark.append(str(t))
 
 hbavss_pcl_implicate_case_overhead = [
     i*1000.0 for i in hbavss_pcl_implicate_case_overhead]
+hbavss_pcl_implicate_case_overhead_yerr = [
+    i*1000.0 for i in hbavss_pcl_implicate_case_overhead_yerr]
 hbavss_amt_implicate_case_overhead = [
     i*1000.0 for i in hbavss_amt_implicate_case_overhead]
+hbavss_amt_implicate_case_overhead_yerr = [
+    i*1000.0 for i in hbavss_amt_implicate_case_overhead_yerr]
 
 pc_pos = [i for i, _ in enumerate(polycountvals_provebatch)]
 
@@ -188,8 +208,10 @@ plt.plot(verifybatchtimes, linestyle='-', marker='o',
 plt.plot(plotting_ver_arr, linestyle='-', marker='o',
          color=color2, label="AMT PC")
 
-#plt.errorbar(plotting_n_arr, verifybatchtimes, yerr=verifybatchtimes_yerr, fmt='none')
-#plt.errorbar(plotting_n_arr, plotting_ver_arr, yerr=plotting_ver_yerr_arr, fmt='none')
+plt.errorbar(plotting_n_arr, verifybatchtimes,
+             yerr=verifybatchtimes_yerr, fmt='none')
+plt.errorbar(plotting_n_arr, plotting_ver_arr,
+             yerr=plotting_ver_yerr_arr, fmt='none')
 plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
 plt.ylabel("Amortized verify time per proof (ms)", fontsize=axis_label_size)
 plt.title("PolyCommitHB vs AMT PC Verification Performance",
@@ -199,8 +221,8 @@ plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
 plt.ylim(0)
-plt.savefig("pcl/pcl_vs_amt_verification.png", bbox_inches='tight')
-plt.savefig("pcl/pcl_vs_amt_verification.pdf", bbox_inches='tight')
+plt.savefig("gen_graphs/pcl_vs_amt_verification.png", bbox_inches='tight')
+plt.savefig("gen_graphs/pcl_vs_amt_verification.pdf", bbox_inches='tight')
 
 plotting_deal_arr = []
 plotting_deal_yerr_arr = []
@@ -215,8 +237,10 @@ plt.plot(provebatchtimes, linestyle='-', marker='o',
 plt.plot(plotting_deal_arr, linestyle='-', marker='o',
          color=color2, label="AMT PC")
 
-#plt.errorbar(plotting_n_arr, provebatchtimes, yerr=provebatchtimes_yerr, fmt='none')
-#plt.errorbar(plotting_n_arr, plotting_deal_arr, yerr=plotting_deal_yerr_arr, fmt='none')
+plt.errorbar(plotting_n_arr, provebatchtimes,
+             yerr=provebatchtimes_yerr, fmt='none')
+plt.errorbar(plotting_n_arr, plotting_deal_arr,
+             yerr=plotting_deal_yerr_arr, fmt='none')
 plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
 plt.ylabel("Amortized generation time per proof (ms)",
            fontsize=axis_label_size)
@@ -226,8 +250,8 @@ plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
 plt.ylim(0)
-plt.savefig("pcl/pcl_vs_amt_prove_generation.png", bbox_inches='tight')
-plt.savefig("pcl/pcl_vs_amt_prove_generation.pdf", bbox_inches='tight')
+plt.savefig("gen_graphs/pcl_vs_amt_prove_generation.png", bbox_inches='tight')
+plt.savefig("gen_graphs/pcl_vs_amt_prove_generation.pdf", bbox_inches='tight')
 
 plt.figure(figsize=(10, 3))
 
@@ -250,18 +274,7 @@ plt.ylim(0)
 plt.clf()
 n_vals = [str(3 * int(t) + 1) for t in tvals_hbavss_amt_benchmark]
 n_pos = [i for i, _ in enumerate(n_vals)]
-amt_hbavss_implicate_case_runtime_plot_invalid_share = []
-amt_hbavss_implicate_case_runtime_plot_valid_share = []
-amt_vss_implicate_case_runtime_plot = []
-for i, t in enumerate(tvals_hbavss_amt_implicate_case_benchmark):
-    amt_hbavss_implicate_case_runtime_plot_valid_share.append(
-        hbavss_amt_implicate_case_overhead[i] + plotting_deal_arr[i] +
-        plotting_ver_arr[i])
-    amt_hbavss_implicate_case_runtime_plot_invalid_share.append(
-        hbavss_amt_implicate_case_overhead[i] + plotting_deal_arr[i] +
-        plotting_ver_arr[i] + (int(t)+1)*plotting_ver_arr[i])
-    amt_vss_implicate_case_runtime_plot.append(
-        plotting_reconstr_bc_arr[i] + plotting_deal_arr[i] + plotting_ver_arr[i])
+
 hbavss_pcl_only_related_cost = []
 hbavss_amt_only_related_cost = []
 hbavss_pcl_sum_cost = []
@@ -301,8 +314,10 @@ plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
 plt.ylim(0)
-plt.savefig("pcl/hbavss_e2e_including_reconstruction.png", bbox_inches='tight')
-plt.savefig("pcl/hbavss_e2e_including_reconstruction.pdf", bbox_inches='tight')
+plt.savefig("gen_graphs/hbavss_e2e_including_reconstruction.png",
+            bbox_inches='tight')
+plt.savefig("gen_graphs/hbavss_e2e_including_reconstruction.pdf",
+            bbox_inches='tight')
 
 # No implicate breakdown:
 # Deadling + Verification Time only
@@ -340,11 +355,21 @@ plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
 plt.ylim(0)
-plt.savefig("pcl/hbavss_e2e_non_faulty.png", bbox_inches='tight')
-plt.savefig("pcl/hbavss_e2e_non_faulty.pdf", bbox_inches='tight')
+plt.savefig("gen_graphs/hbavss_e2e_non_faulty.png", bbox_inches='tight')
+plt.savefig("gen_graphs/hbavss_e2e_non_faulty.pdf", bbox_inches='tight')
 
 # Protocol cost comparison:
 plt.clf()
+
+plt.errorbar(n_vals, hbavss_polycommitloglin_overhead,
+             yerr=hbavss_polycommitloglin_overhead_yerr, fmt='none')
+plt.errorbar(n_vals, hbavss_pcl_implicate_case_overhead,
+             yerr=hbavss_pcl_implicate_case_overhead_yerr, fmt='none')
+plt.errorbar(n_vals, hbavss_amt_overhead,
+             yerr=hbavss_amt_overhead_yerr, fmt='none')
+plt.errorbar(n_vals, hbavss_amt_implicate_case_overhead,
+             yerr=hbavss_amt_implicate_case_overhead_yerr, fmt='none')
+
 plt.plot(hbavss_polycommitloglin_overhead,  linestyle='--', marker='^',
          color=color1, label="PolyCommitHB + hbAVSS protocol costs (No implicate)")
 plt.plot(hbavss_pcl_implicate_case_overhead, linestyle='-', marker='o',
@@ -365,5 +390,7 @@ plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
 plt.ylim(0)
-plt.savefig("pcl/hbavss_e2e_overhead_comparsion.png", bbox_inches='tight')
-plt.savefig("pcl/hbavss_e2e_overhead_comparsion.pdf", bbox_inches='tight')
+plt.savefig("gen_graphs/hbavss_e2e_overhead_comparsion.png",
+            bbox_inches='tight')
+plt.savefig("gen_graphs/hbavss_e2e_overhead_comparsion.pdf",
+            bbox_inches='tight')

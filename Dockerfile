@@ -113,7 +113,7 @@ RUN make install
 # Install better pairing
 # Creates dependencies in /usr/local/include/pbc and /usr/local/lib
 WORKDIR /
-RUN curl -so - https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz | tar xzvf - 
+RUN curl -k -so - https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz | tar xzvf - 
 WORKDIR /pbc-0.5.14/
 RUN ./configure
 RUN make
