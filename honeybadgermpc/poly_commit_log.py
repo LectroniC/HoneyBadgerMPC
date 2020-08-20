@@ -1,4 +1,4 @@
-#from honeybadgermpc.betterpairing import ZR, G1
+# from honeybadgermpc.betterpairing import ZR, G1
 from pypairing import ZR, G1
 from honeybadgermpc.proofs import (
     prove_inner_product_one_known,
@@ -13,6 +13,7 @@ from honeybadgermpc.proofs import (
     MerkleTree,
 )
 import pickle
+
 
 class PolyCommitLog:
     def __init__(self, crs=None, degree_max=33):
@@ -106,7 +107,7 @@ class PolyCommitLog:
     # Comparing to batch_create_witness, this takes a list of phis and reuses challenges across
     # len(phis) * len(y_vecs) number of witnesses. The returned witnesses_2d is a list of lists
     # where witnesses_2d[i][j] returns the combination of phi_i on points j.
-    #@profile
+    # @profile
     '''def double_batch_create_witness(self, phis, r, n=None):
         t = len(phis[0].coeffs) - 1
         numpolys = len(phis)
@@ -166,7 +167,7 @@ class PolyCommitLog:
                 witnesses_2d[i].append(witnesses[i * numverifiers + j])
         return witnesses_2d'''
 
-    #@profile
+    # @profile
     def double_batch_create_witness(self, phis, r, n=None):
         t = len(phis[0].coeffs) - 1
         numpolys = len(phis)
@@ -197,7 +198,6 @@ class PolyCommitLog:
         for j in range(numverifiers):
             tree.append(pickle.dumps(T_vec[j]))
         roothash = tree.get_root_hash()
-        #for i in range(len(phis)):
         for j in range(numverifiers):
             branch = tree.get_branch(j)
             witnesses[j].append(roothash)
@@ -207,29 +207,14 @@ class PolyCommitLog:
         for i in range(len(phis)):
             d_vecs.append([phis[i].coeffs[j] + s_vec[j] * challenge for j in range(t + 1)])
         Ds = [G1.identity() for _ in range(len(phis))]
-        #for i in range(len(phis)):
-        #    for j in range(t + 1):
-        #        Ds[i] *= self.gs[j].pow(d_vecs[i][j])
-        _ = [ [ Ds[i].__imul__(self.gs[j].pow(d_vecs[i][j])) for j in range(t+1) ] for i in range(len(phis))]
+        _ = [[Ds[i].__imul__(self.gs[j].pow(d_vecs[i][j])) for j in range(t + 1)] for i in range(len(phis))]
         mu = r + rho * challenge
         comms, t_hats, iproofs = prove_double_batch_inner_product_one_known_but_differenter(
             d_vecs, self.y_vecs, crs=[self.gs, self.u]
         )
-        #for i in range(len(witnesses) // (numverifiers)):
-        #    for j in range(numverifiers):
-        #        abs_idx = i * numverifiers + j
-        #        witnesses[abs_idx] += [S, T_vec[j], Ds[i], mu, t_hats[abs_idx], iproofs[i][j]]
         for j in range(numverifiers):
             witnesses[j] += [t, S, T_vec[j], Ds, mu, t_hats[j], iproofs[j]]
         return witnesses
-
-        # Transform witnesses into a better structured 2D array.
-        #witnesses_2d = []
-        #for i in range(len(witnesses) // numverifiers):
-        #    witnesses_2d.append([])
-        #    for j in range(numverifiers):
-        #        witnesses_2d[i].append(witnesses[i * numverifiers + j])
-        #return witnesses_2d
 
     def verify_eval(self, c, i, phi_at_i, witness):
         t = witness[-1][0] - 1
@@ -282,6 +267,7 @@ class PolyCommitLog:
             Ds, t_hats, y_vec, iproofs, crs=[self.gs, self.u]
         )
         return ret'''
+
     # Degree specification enables degree enforcement (will return false if polynomial is not of specified degree)
     def batch_verify_eval(self, cs, i, phis_at_i, witness, degree=None):
         [roothash, branch, t, S, T, Ds, mu, t_hats, proof] = witness
@@ -290,7 +276,7 @@ class PolyCommitLog:
         iproof, treeparts = proof
         if not MerkleTree.verify_membership(pickle.dumps(T), branch, roothash):
             return False
-        #TODO: Should include cs
+        # TODO: Should include cs
         challenge = ZR.hash(pickle.dumps([roothash, self.gs, self.h, self.u, S]))
         y_vec = [ZR(i) ** j for j in range(t + 1)]
         ret = True
@@ -301,7 +287,7 @@ class PolyCommitLog:
             Ds, t_hats, y_vec, iproof, treeparts, crs=[self.gs, self.u]
         )
         return ret
- 
+
     def preprocess_prover(self, level=8):
         self.u.preprocess(level)
         # 0 to length-1
@@ -310,4 +296,3 @@ class PolyCommitLog:
 
     def preprocess_verifier(self, level=8):
         self.u.preprocess(level)
-
