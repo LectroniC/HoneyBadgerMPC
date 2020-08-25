@@ -4,8 +4,8 @@ from contextlib import ExitStack
 from pickle import dumps
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_const import gen_pc_const_crs
-#from honeybadgermpc.betterpairing import G1, ZR
-from honeybadgermpc.hbavss import HbAvssLight, HbAvssBatch, HbAvssBatchLoglin
+# from honeybadgermpc.betterpairing import G1, ZR
+from honeybadgermpc.hbavss import HbAvssLight, HbAvssBatch, HbAvssBatchLoglin, HbAvssBigBatchRecovery
 from honeybadgermpc.mpc import TaskProgramRunner
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 from honeybadgermpc.utils.misc import print_exception_callback
@@ -23,6 +23,7 @@ def get_avss_params(n, t):
         public_keys[i] = pow(g, private_keys[i])
     return g, h, public_keys, private_keys
 
+
 def get_avss_params_pyp(n, t):
     from pypairing import G1, ZR
     g, h = G1.rand(), G1.rand()
@@ -31,6 +32,7 @@ def get_avss_params_pyp(n, t):
         private_keys[i] = ZR.random()
         public_keys[i] = pow(g, private_keys[i])
     return g, h, public_keys, private_keys
+
 
 @mark.asyncio
 async def test_hbavss_batch(test_router):
@@ -74,6 +76,7 @@ async def test_hbavss_batch(test_router):
 
     assert recovered_values == values
 
+
 @mark.asyncio
 async def test_hbavss_loglin(test_router):
     from pypairing import G1, ZR
@@ -94,6 +97,50 @@ async def test_hbavss_loglin(test_router):
         hbavss_list = [None] * n
         for i in range(n):
             hbavss = HbAvssBatchLoglin(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        outputs = await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        shares = [output[2] for output in outputs]
+        for task in avss_tasks:
+            task.cancel()
+
+    fliped_shares = list(map(list, zip(*shares)))
+    recovered_values = []
+    for item in fliped_shares:
+        recovered_values.append(
+            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
+        )
+
+    assert recovered_values == values
+
+
+@mark.asyncio
+async def test_hbavss_bigbatchrecovery(test_router):
+    from pypairing import G1, ZR
+    t = 2
+    n = 3 * t + 1
+
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    sends, recvs, _ = test_router(n)
+    # TODO: add configurable crs specifically for poly_commit_log
+    crs = [g]
+
+    values = [ZR.random()] * 2 * (t + 1)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+
+    shares = [None] * n
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = HbAvssBigBatchRecovery(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             hbavss_list[i] = hbavss
             stack.enter_context(hbavss)
             if i == dealer_id:
@@ -357,8 +404,8 @@ async def test_hbavss_light_batch(test_router):
             shares[j].append(outputs[i][2][j])
     for j in range(batchsize):
         assert (
-            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), shares[j]))
-            == values[j]
+                polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), shares[j]))
+                == values[j]
         )
 
 
@@ -435,11 +482,9 @@ async def test_hbavss_light_batch_share_fault(test_router):
             shares[j].append(outputs[i][2][j])
     for j in range(batchsize):
         assert (
-            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), shares[j]))
-            == values[j]
+                polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), shares[j]))
+                == values[j]
         )
-
-
 
 
 @mark.asyncio
@@ -516,6 +561,7 @@ async def test_hbavss_batch_share_fault(test_router):
 
     assert recovered_values == values
 
+
 @mark.asyncio
 async def test_hbavss_batch_loglin_share_fault(test_router):
     from pypairing import G1, ZR
@@ -546,7 +592,7 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
             witnesses = self.poly_commit.double_batch_create_witness(phi, r)
             for i in range(n):
                 shared_key = pow(self.public_keys[i], ephemeral_secret_key)
-                phis_i = [ phi[k](i + 1) for k in range(batch_size)]
+                phis_i = [phi[k](i + 1) for k in range(batch_size)]
                 if i == fault_n:
                     phis_i[fault_k] = ZR.random()
                 z = (phis_i, witnesses[i])
@@ -594,7 +640,98 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
         recovered_values.append(
             polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
         )
+    assert recovered_values == values
 
+
+@mark.asyncio
+async def test_hbavss_bigbatchrecovery_share_fault(test_router):
+    from pypairing import G1, ZR
+    from honeybadgermpc.share_recovery import poly_lagrange_at_x, poly_interpolate_g1_at_x
+    # Injects one invalid share
+    class BadDealer(HbAvssBigBatchRecovery):
+        def _get_dealer_msg(self, values, n):
+            # Notice we currently required the number of values shared to be divisible by t+1.
+            secret_count = len(values)
+            redundant_poly_count = secret_count // (self.t + 1) * (n - (self.t + 1))
+            r = ZR.random()
+            phis = [self.poly.random(self.t, values[k]) for k in range(secret_count)]
+            psis = []
+            orig_poly_commitments = [self.poly_commit.commit(phis[k], r) for k in range(secret_count)]
+            for batch_idx in range(secret_count // (self.t + 1)):
+                base_idx = batch_idx * (self.t + 1)
+                known_polys = [[i + 1, phis[base_idx + i]] for i in range(self.t + 1)]
+                psis.extend([poly_interpolate_g1_at_x(self.poly, known_polys, i + 1) for
+                             i in
+                             range(self.t + 1, self.n)])
+            redundant_poly_commitments = [self.poly_commit.commit(psis[k], r) for k in range(redundant_poly_count)]
+
+            ephemeral_secret_key = self.field.random()
+            ephemeral_public_key = pow(self.g, ephemeral_secret_key)
+            dispersal_msg_list = [None] * n
+            orig_poly_witnesses = [self.poly_commit.double_batch_create_witness(phis[i::(self.t + 1)], r) for i in
+                                   range(self.t + 1)]
+            redundant_poly_witnesses = [self.poly_commit.double_batch_create_witness(psis[i::(n - (self.t + 1))], r) for
+                                        i
+                                        in
+                                        range(n - (self.t + 1))]
+            #fault_i = randint(1, n - 1)
+            fault_i = 4
+            fault_k = randint(1, secret_count - 1)
+            for i in range(n):
+                shared_key = pow(self.public_keys[i], ephemeral_secret_key)
+                orig_shares = [phis[k](i + 1) for k in range(secret_count)]
+                if i == fault_i:
+                    orig_shares[fault_k] = ZR.random()
+                # redundant_shares = [psis[k](i + 1) for k in range(redundant_poly_count)]
+                # Redundant shares are not required to send.
+                z = (orig_shares, [orig_poly_witnesses[j][i] for j in range(self.t + 1)],
+                     [redundant_poly_witnesses[j][i] for j in range(n - (self.t + 1))])
+                zz = SymmetricCrypto.encrypt(str(shared_key).encode(), z)
+                dispersal_msg_list[i] = zz
+
+            return dumps((orig_poly_commitments, redundant_poly_commitments, ephemeral_public_key)), dispersal_msg_list
+
+    t = 2
+    n = 3 * t + 1
+
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    sends, recvs, _ = test_router(n)
+    # TODO: add configurable crs specifically for poly_commit_log
+    crs = [g]
+
+    values = [ZR.random()] * 2 * (t + 1)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+
+    with ExitStack() as stack:
+        hbavss_list = []
+        for i in range(n):
+            if i == dealer_id:
+                hbavss = BadDealer(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            else:
+                hbavss = HbAvssBigBatchRecovery(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss_list.append(hbavss)
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        outputs = await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        shares = [output[2] for output in outputs]
+        for task in avss_tasks:
+            task.cancel()
+
+    fliped_shares = list(map(list, zip(*shares)))
+    recovered_values = []
+    for item in fliped_shares:
+        recovered_values.append(
+            polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
+        )
+    # print(values)
+    # print("\n\n\n\n")
     assert recovered_values == values
 
 
