@@ -351,12 +351,24 @@ async def hbavss_bigbatchrecovery_pcl_one_faulty_share(benchmark_router, params)
 @mark.parametrize(
     "batch_multiple, t",
     [
-        (1, 30),
-        (2, 30),
-        (3, 30),
-        (5, 30),
-        (8, 30),
-        (11, 30)
+        (1, 4),
+        (2, 4),
+        (3, 4),
+        (5, 4),
+        (8, 4),
+        (11, 4),
+        (1, 10),
+        (2, 10),
+        (3, 10),
+        (5, 10),
+        (8, 10),
+        (11, 10),
+        (1, 33),
+        (2, 33),
+        (3, 33),
+        (5, 33),
+        (8, 33),
+        (11, 33)
     ],
 )
 def test_hbavss_bigbatchrecovery_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
@@ -411,12 +423,24 @@ async def hbavss_bigbatchrecovery_pcl_max_faulty_shares(benchmark_router, params
 @mark.parametrize(
     "batch_multiple, t",
     [
-        (1, 30),
-        (2, 30),
-        (3, 30),
-        (5, 30),
-        (8, 30),
-        (11, 30)
+        (1, 4),
+        (2, 4),
+        (3, 4),
+        (5, 4),
+        (8, 4),
+        (11, 4),
+        (1, 10),
+        (2, 10),
+        (3, 10),
+        (5, 10),
+        (8, 10),
+        (11, 10),
+        (1, 33),
+        (2, 33),
+        (3, 33),
+        (5, 33),
+        (8, 33),
+        (11, 33)
     ],
 )
 def test_hbavss_bigbatchrecovery_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
@@ -696,12 +720,24 @@ async def hbavss_batchinterpolatablewitness_pcl_one_faulty_share(benchmark_route
 @mark.parametrize(
     "batch_multiple, t",
     [
-        (1, 30),
-        (2, 30),
-        (3, 30),
-        (5, 30),
-        (8, 30),
-        (11, 30)
+        (1, 4),
+        (2, 4),
+        (3, 4),
+        (5, 4),
+        (8, 4),
+        (11, 4),
+        (1, 10),
+        (2, 10),
+        (3, 10),
+        (5, 10),
+        (8, 10),
+        (11, 10),
+        (1, 33),
+        (2, 33),
+        (3, 33),
+        (5, 33),
+        (8, 33),
+        (11, 33)
     ],
 )
 def test_hbavss_batchinterpolatablewitness_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
@@ -757,12 +793,24 @@ async def hbavss_batchinterpolatablewitness_pcl_max_faulty_shares(benchmark_rout
 @mark.parametrize(
     "batch_multiple, t",
     [
-        (1, 30),
-        (2, 30),
-        (3, 30),
-        (5, 30),
-        (8, 30),
-        (11, 30)
+        (1, 4),
+        (2, 4),
+        (3, 4),
+        (5, 4),
+        (8, 4),
+        (11, 4),
+        (1, 10),
+        (2, 10),
+        (3, 10),
+        (5, 10),
+        (8, 10),
+        (11, 10),
+        (1, 33),
+        (2, 33),
+        (3, 33),
+        (5, 33),
+        (8, 33),
+        (11, 33)
     ],
 )
 def test_hbavss_batchinterpolatablewitness_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
@@ -1002,12 +1050,24 @@ async def hbavss_batchloglin_pcl_one_faulty_share(benchmark_router, params):
 @mark.parametrize(
     "batch_multiple, t",
     [
-        (1, 30),
-        (2, 30),
-        (3, 30),
-        (5, 30),
-        (8, 30),
-        (11, 30)
+        (1, 4),
+        (2, 4),
+        (3, 4),
+        (5, 4),
+        (8, 4),
+        (11, 4),
+        (1, 10),
+        (2, 10),
+        (3, 10),
+        (5, 10),
+        (8, 10),
+        (11, 10),
+        (1, 33),
+        (2, 33),
+        (3, 33),
+        (5, 33),
+        (8, 33),
+        (11, 33)
     ],
 )
 def test_hbavss_batchloglin_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
@@ -1063,12 +1123,24 @@ async def hbavss_batchloglin_pcl_max_faulty_shares(benchmark_router, params):
 @mark.parametrize(
     "batch_multiple, t",
     [
-        (1, 30),
-        (2, 30),
-        (3, 30),
-        (5, 30),
-        (8, 30),
-        (11, 30)
+        (1, 4),
+        (2, 4),
+        (3, 4),
+        (5, 4),
+        (8, 4),
+        (11, 4),
+        (1, 10),
+        (2, 10),
+        (3, 10),
+        (5, 10),
+        (8, 10),
+        (11, 10),
+        (1, 33),
+        (2, 33),
+        (3, 33),
+        (5, 33),
+        (8, 33),
+        (11, 33)
     ],
 )
 def test_hbavss_batchloglin_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
