@@ -25,6 +25,27 @@ logger.setLevel(logging.WARNING)
 # Uncomment this when you want logs from this file.
 logger.setLevel(logging.NOTSET)
 
+mul_t_param_list = [
+    (1, 4),
+    (2, 4),
+    (3, 4),
+    (5, 4),
+    (8, 4),
+    (11, 4),
+    (1, 10),
+    (2, 10),
+    (3, 10),
+    (5, 10),
+    (8, 10),
+    (11, 10),
+    (1, 33),
+    (2, 33),
+    (3, 33),
+    (5, 33),
+    (8, 33),
+    (11, 33)
+]
+
 
 def get_avss_params(n, t):
     g, h = G1.rand(), G1.rand()
@@ -314,6 +335,51 @@ class Hbacss2_always_send_and_accept_implicates(Hbacss2_always_accept_implicates
                 break
 
 
+async def hbacss2_pcl_all_correct(benchmark_router, params):
+    (t, n, g, h, pks, sks, crs, values) = params
+    sends, recvs, _ = benchmark_router(n)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+    pcl = PolyCommitLoglinDummy(crs=None, degree_max=t)
+
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = Hbacss2(pks, sks[i], crs, n, t, i, sends[i], recvs[i],
+                             pc=pcl)
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        for task in avss_tasks:
+            task.cancel()
+
+
+@mark.parametrize(
+    "batch_multiple, t",
+    mul_t_param_list,
+)
+def test_hbavss2_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t):
+    from pypairing import G1, ZR
+    loop = asyncio.get_event_loop()
+    n = 3 * t + 1
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    values = [ZR.random()] * batch_multiple * (t + 1)
+    crs = [g]
+    params = (t, n, g, h, pks, sks, crs, values)
+
+    def _prog():
+        loop.run_until_complete(hbacss2_pcl_all_correct(benchmark_router, params))
+
+    benchmark(_prog)
+
+
 async def hbacss2_pcl_one_faulty_share(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
@@ -350,26 +416,7 @@ async def hbacss2_pcl_one_faulty_share(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    [
-        (1, 4),
-        (2, 4),
-        (3, 4),
-        (5, 4),
-        (8, 4),
-        (11, 4),
-        (1, 10),
-        (2, 10),
-        (3, 10),
-        (5, 10),
-        (8, 10),
-        (11, 10),
-        (1, 33),
-        (2, 33),
-        (3, 33),
-        (5, 33),
-        (8, 33),
-        (11, 33)
-    ],
+    mul_t_param_list,
 )
 def test_hbavss2_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
@@ -422,26 +469,7 @@ async def hbacss2_pcl_max_faulty_shares(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    [
-        (1, 4),
-        (2, 4),
-        (3, 4),
-        (5, 4),
-        (8, 4),
-        (11, 4),
-        (1, 10),
-        (2, 10),
-        (3, 10),
-        (5, 10),
-        (8, 10),
-        (11, 10),
-        (1, 33),
-        (2, 33),
-        (3, 33),
-        (5, 33),
-        (8, 33),
-        (11, 33)
-    ],
+    mul_t_param_list,
 )
 def test_hbacss2_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
@@ -681,6 +709,52 @@ class Hbacss1_always_send_and_accept_implicates(
                 break
 
 
+async def hbacss1_pcl_all_correct(benchmark_router, params):
+    (t, n, g, h, pks, sks, crs, values) = params
+    sends, recvs, _ = benchmark_router(n)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+    pcl = PolyCommitLoglinDummy(crs=None, degree_max=t)
+
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = Hbacss1(pks, sks[i], crs, n, t, i,
+                             sends[i],
+                             recvs[i], pc=pcl)
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        for task in avss_tasks:
+            task.cancel()
+
+
+@mark.parametrize(
+    "batch_multiple, t",
+    mul_t_param_list,
+)
+def test_hbacss1_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t):
+    from pypairing import G1, ZR
+    loop = asyncio.get_event_loop()
+    n = 3 * t + 1
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    values = [ZR.random()] * batch_multiple * (t + 1)
+    crs = [g]
+    params = (t, n, g, h, pks, sks, crs, values)
+
+    def _prog():
+        loop.run_until_complete(hbacss1_pcl_all_correct(benchmark_router, params))
+
+    benchmark(_prog)
+
+
 async def hbacss1_pcl_one_faulty_share(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
@@ -719,26 +793,7 @@ async def hbacss1_pcl_one_faulty_share(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    [
-        (1, 4),
-        (2, 4),
-        (3, 4),
-        (5, 4),
-        (8, 4),
-        (11, 4),
-        (1, 10),
-        (2, 10),
-        (3, 10),
-        (5, 10),
-        (8, 10),
-        (11, 10),
-        (1, 33),
-        (2, 33),
-        (3, 33),
-        (5, 33),
-        (8, 33),
-        (11, 33)
-    ],
+    mul_t_param_list,
 )
 def test_hbacss1_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
@@ -794,26 +849,7 @@ async def hbacss1_pcl_max_faulty_shares(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    [
-        (1, 4),
-        (2, 4),
-        (3, 4),
-        (5, 4),
-        (8, 4),
-        (11, 4),
-        (1, 10),
-        (2, 10),
-        (3, 10),
-        (5, 10),
-        (8, 10),
-        (11, 10),
-        (1, 33),
-        (2, 33),
-        (3, 33),
-        (5, 33),
-        (8, 33),
-        (11, 33)
-    ],
+    mul_t_param_list,
 )
 def test_hbacss1_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
@@ -1017,7 +1053,7 @@ class Hbacss0_always_send_and_accept_implicates(Hbacss0):
                 break
 
 
-async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
+async def hbacss0_pcl_all_correct(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
     # fault_i = 4
@@ -1030,15 +1066,9 @@ async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
     with ExitStack() as stack:
         hbavss_list = [None] * n
         for i in range(n):
-            hbavss = None
-            if i != fault_i:
-                hbavss = Hbacss0_always_accept_implicates(pks, sks[i], crs, n, t, i, sends[i],
-                                                                    recvs[i],
-                                                                    pc=pcl)
-            else:
-                hbavss = Hbacss0_always_send_and_accept_implicates(pks, sks[i], crs, n, t, i,
-                                                                             sends[i],
-                                                                             recvs[i], pc=pcl)
+            hbavss = hbacss0(pks, sks[i], crs, n, t, i, sends[i],
+                             recvs[i],
+                             pc=pcl)
             hbavss_list[i] = hbavss
             stack.enter_context(hbavss)
             if i == dealer_id:
@@ -1055,26 +1085,62 @@ async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    [
-        (1, 4),
-        (2, 4),
-        (3, 4),
-        (5, 4),
-        (8, 4),
-        (11, 4),
-        (1, 10),
-        (2, 10),
-        (3, 10),
-        (5, 10),
-        (8, 10),
-        (11, 10),
-        (1, 33),
-        (2, 33),
-        (3, 33),
-        (5, 33),
-        (8, 33),
-        (11, 33)
-    ],
+    mul_t_param_list,
+)
+def test_hbacss0_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t):
+    from pypairing import G1, ZR
+    loop = asyncio.get_event_loop()
+    n = 3 * t + 1
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    values = [ZR.random()] * batch_multiple * (t + 1)
+    crs = [g]
+    params = (t, n, g, h, pks, sks, crs, values)
+
+    def _prog():
+        loop.run_until_complete(hbacss0_pcl_all_correct(benchmark_router, params))
+
+    benchmark(_prog)
+
+
+async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
+    (t, n, g, h, pks, sks, crs, values) = params
+    fault_i = randint(1, n - 1)
+    # fault_i = 4
+    # fault_k = randint(1, len(values) - 1)
+    sends, recvs, _ = benchmark_router(n)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+    pcl = PolyCommitLoglinDummy(crs=None, degree_max=t)
+
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = None
+            if i != fault_i:
+                hbavss = Hbacss0_always_accept_implicates(pks, sks[i], crs, n, t, i, sends[i],
+                                                          recvs[i],
+                                                          pc=pcl)
+            else:
+                hbavss = Hbacss0_always_send_and_accept_implicates(pks, sks[i], crs, n, t, i,
+                                                                   sends[i],
+                                                                   recvs[i], pc=pcl)
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        for task in avss_tasks:
+            task.cancel()
+
+
+@mark.parametrize(
+    "batch_multiple, t",
+    hbacss0_pcl_all_correct,
 )
 def test_hbacss0_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
@@ -1106,14 +1172,14 @@ async def hbacss0_pcl_max_faulty_shares(benchmark_router, params):
             hbavss = None
             if i not in fault_is:
                 hbavss = Hbacss0_always_accept_implicates(pks, sks[i], crs, n, t, i,
-                                                                    sends[i],
-                                                                    recvs[i],
-                                                                    pc=pcl)
+                                                          sends[i],
+                                                          recvs[i],
+                                                          pc=pcl)
             else:
                 hbavss = Hbacss0_always_send_and_accept_implicates(pks, sks[i], crs, n, t,
-                                                                             i,
-                                                                             sends[i],
-                                                                             recvs[i], pc=pcl)
+                                                                   i,
+                                                                   sends[i],
+                                                                   recvs[i], pc=pcl)
             hbavss_list[i] = hbavss
             stack.enter_context(hbavss)
             if i == dealer_id:
@@ -1130,26 +1196,7 @@ async def hbacss0_pcl_max_faulty_shares(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    [
-        (1, 4),
-        (2, 4),
-        (3, 4),
-        (5, 4),
-        (8, 4),
-        (11, 4),
-        (1, 10),
-        (2, 10),
-        (3, 10),
-        (5, 10),
-        (8, 10),
-        (11, 10),
-        (1, 33),
-        (2, 33),
-        (3, 33),
-        (5, 33),
-        (8, 33),
-        (11, 33)
-    ],
+    hbacss0_pcl_all_correct,
 )
 def test_hbacss0_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
