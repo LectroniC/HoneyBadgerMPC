@@ -38,7 +38,7 @@ def get_avss_params(n, t):
     return g, h, public_keys, private_keys
 
 
-class HbAvssBatchLoglin:
+class Hbacss0:
     def __init__(
             self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=pypairing.ZR
     ):  # (# noqa: E501)
@@ -377,7 +377,7 @@ class HbAvssBatchLoglin:
 # Notice that by extending from HbAvssBatchLoglin we are using non-interpolatable polycommit
 # so the following code cannot work by default and there are certain modification to get it work just by
 # replacing with random values
-class HbAvssBatchInterpolatableWitness(HbAvssBatchLoglin):
+class Hbacss1(Hbacss0):
     async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
         tag = f"{dealer_id}-{avss_id}-B-AVSS"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
@@ -562,7 +562,7 @@ class HbAvssBatchInterpolatableWitness(HbAvssBatchLoglin):
                 break
 
 
-class HbAvssBigBatchRecovery:
+class Hbacss2:
     def __init__(
             self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=pypairing.ZR
     ):  # (# noqa: E501)

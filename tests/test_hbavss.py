@@ -5,7 +5,7 @@ from pickle import dumps
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_const import gen_pc_const_crs
 # from honeybadgermpc.betterpairing import G1, ZR
-from honeybadgermpc.hbavss import HbAvssBatchLoglin, HbAvssBigBatchRecovery
+from honeybadgermpc.hbavss import Hbacss2, Hbacss0
 from honeybadgermpc.mpc import TaskProgramRunner
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 from honeybadgermpc.utils.misc import print_exception_callback
@@ -53,7 +53,7 @@ async def test_hbavss_loglin(test_router):
     with ExitStack() as stack:
         hbavss_list = [None] * n
         for i in range(n):
-            hbavss = HbAvssBatchLoglin(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss = Hbacss0(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             hbavss_list[i] = hbavss
             stack.enter_context(hbavss)
             if i == dealer_id:
@@ -81,7 +81,7 @@ async def test_hbavss_loglin(test_router):
 async def test_hbavss_batch_loglin_share_fault(test_router):
     from pypairing import G1, ZR
     # Injects one invalid share
-    class BadDealer(HbAvssBatchLoglin):
+    class BadDealer(Hbacss0):
         def _get_dealer_msg(self, values, n, batch_size):
             # Sample B random degree-(t) polynomials of form φ(·)
             # such that each φ_i(0) = si and φ_i(j) is Pj’s share of si
@@ -135,7 +135,7 @@ async def test_hbavss_batch_loglin_share_fault(test_router):
             if i == dealer_id:
                 hbavss = BadDealer(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             else:
-                hbavss = HbAvssBatchLoglin(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+                hbavss = Hbacss0(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             hbavss_list.append(hbavss)
             stack.enter_context(hbavss)
             if i == dealer_id:
@@ -177,7 +177,7 @@ async def test_hbavss_bigbatchrecovery(test_router):
     with ExitStack() as stack:
         hbavss_list = [None] * n
         for i in range(n):
-            hbavss = HbAvssBigBatchRecovery(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+            hbavss = Hbacss2(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             hbavss_list[i] = hbavss
             stack.enter_context(hbavss)
             if i == dealer_id:
@@ -206,7 +206,7 @@ async def test_hbavss_bigbatchrecovery_share_fault(test_router):
     from pypairing import G1, ZR
     from honeybadgermpc.share_recovery import poly_lagrange_at_x, poly_interpolate_g1_at_x
     # Injects one invalid share
-    class BadDealer(HbAvssBigBatchRecovery):
+    class BadDealer(Hbacss2):
         def _get_dealer_msg(self, values, n):
             # Notice we currently required the number of values shared to be divisible by t+1.
             secret_count = len(values)
@@ -267,7 +267,7 @@ async def test_hbavss_bigbatchrecovery_share_fault(test_router):
             if i == dealer_id:
                 hbavss = BadDealer(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             else:
-                hbavss = HbAvssBigBatchRecovery(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
+                hbavss = Hbacss2(pks, sks[i], crs, n, t, i, sends[i], recvs[i])
             hbavss_list.append(hbavss)
             stack.enter_context(hbavss)
             if i == dealer_id:
