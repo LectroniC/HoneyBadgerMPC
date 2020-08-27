@@ -1140,7 +1140,7 @@ async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    hbacss0_pcl_all_correct,
+    mul_t_param_list,
 )
 def test_hbacss0_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
@@ -1196,7 +1196,7 @@ async def hbacss0_pcl_max_faulty_shares(benchmark_router, params):
 
 @mark.parametrize(
     "batch_multiple, t",
-    hbacss0_pcl_all_correct,
+    mul_t_param_list,
 )
 def test_hbacss0_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
