@@ -778,3 +778,309 @@ def test_hbavss_batchinterpolatablewitness_pcl_max_faulty_shares(benchmark_route
         loop.run_until_complete(hbavss_batchinterpolatablewitness_pcl_max_faulty_shares(benchmark_router, params))
 
     benchmark(_prog)
+
+class HbAvssBatchLoglin_always_accept_implicates(HbAvssBatchLoglin):
+    async def _handle_implication(
+            self, avid, tag, ephemeral_public_key, commitments, j, j_sk
+    ):
+        """
+        Handle the implication of AVSS.
+        Return True if the implication is valid, False otherwise.
+        """
+        # discard if PKj ! = g^SKj
+        if self.public_keys[j] != pow(self.g, j_sk):
+            return False
+        # decrypt and verify
+        implicate_msg = await avid.retrieve(tag, j)
+        j_shared_key = pow(ephemeral_public_key, j_sk)
+
+        # Same as the batch size
+        secret_count = len(commitments)
+
+        try:
+            j_shares, j_witnesses = SymmetricCrypto.decrypt(
+                str(j_shared_key).encode(), implicate_msg
+            )
+            # j_shares = []
+            # j_witnesses = []
+            # for i in range(secret_count):
+            #    temp_share, temp_witness = mixed_batch[i]
+            #    j_shares.append(temp_share)
+            #    j_witnesses.append(temp_witness)
+        except Exception as e:  # TODO specific exception
+            logger.warn("Implicate confirmed, bad encryption:", e)
+            return True
+        self.poly_commit.batch_verify_eval(
+            commitments, j + 1, j_shares, j_witnesses
+        )
+        return True
+
+class HbAvssBatchLoglin_always_send_and_accept_implicates(HbAvssBatchLoglin_always_accept_implicates):
+    async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
+        tag = f"{dealer_id}-{avss_id}-B-AVSS"
+        send, recv = self.get_send(tag), self.subscribe_recv(tag)
+
+        def multicast(msg):
+            for i in range(self.n):
+                send(i, msg)
+
+        ok_sent = False
+        implicate_sent = False
+        # get phi and public key from reliable broadcast msg
+        commitments, ephemeral_public_key = loads(rbc_msg)
+        # retrieve the z
+        dispersal_msg = await avid.retrieve(tag, self.my_id)
+
+        # Same as the batch size
+        secret_count = len(commitments)
+
+        # all_encrypted_witnesses: n
+        shared_key = pow(ephemeral_public_key, self.private_key)
+
+        shares = [None] * secret_count
+        witnesses = [None] * secret_count
+        # Decrypt
+        all_shares_valid = True
+        try:
+            shares, witnesses = SymmetricCrypto.decrypt(str(shared_key).encode(), dispersal_msg)
+        except ValueError as e:  # TODO: more specific exception
+            logger.warn(f"Implicate due to failure in decrypting: {e}")
+            all_shares_valid = False
+            if not implicate_sent:
+                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                implicate_sent = True
+
+        # call if decryption was successful
+        if all_shares_valid:
+            # Modified so it would always send out implicates.
+            self.poly_commit.batch_verify_eval(
+                    commitments, self.my_id + 1, shares, witnesses)
+            if True:
+                if not implicate_sent:
+                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+                    implicate_sent = True
+                all_shares_valid = False
+        if all_shares_valid and not ok_sent:
+            logger.debug("[%d] OK", self.my_id)
+            logger.info(f"OK_timestamp: {time.time()}")
+            multicast((HbAVSSMessageType.OK, ""))
+            ok_sent = True
+
+        ok_set = set()
+        ready_set = set()
+        implicate_set = set()
+        saved_shares = [None] * self.n
+        saved_shared_actual_length = 0
+        output = False
+        in_share_recovery = False
+        ready_sent = False
+        interpolated = False
+        kdi_broadcast_sent = False
+
+        while True:
+            # Bracha-style agreement
+            sender, avss_msg = await recv()
+
+            # IMPLICATE
+            if avss_msg[0] == HbAVSSMessageType.IMPLICATE:
+                if sender not in implicate_set:
+                    implicate_set.add(sender)
+                    # logger.debug("[%d] Received implicate from [%d]", self.my_id, sender)
+                    # validate the implicate
+                    if await self._handle_implication(
+                            avid,
+                            tag,
+                            ephemeral_public_key,
+                            commitments,
+                            sender,
+                            avss_msg[1]
+                    ):
+                        # proceed to share recovery
+                        in_share_recovery = True
+                    # logger.debug("[%d] after implication", self.my_id)
+
+            if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
+                kdi = pow(ephemeral_public_key, self.private_key)
+                # The third value doesn't matter
+                multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
+                kdi_broadcast_sent = True
+                in_share_recovery = False
+
+            if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
+                retrieved_msg = await avid.retrieve(tag, sender)
+                try:
+                    j_shares, j_witnesses = SymmetricCrypto.decrypt(
+                        str(avss_msg[1]).encode(), retrieved_msg
+                    )
+                except Exception as e:  # TODO: Add specific exception
+                    logger.warn("Implicate confirmed, bad encryption:", e)
+                if (self.poly_commit.batch_verify_eval(commitments,
+                                                       sender + 1, j_shares, j_witnesses)):
+                    if not saved_shares[sender]:
+                        saved_shared_actual_length += 1
+                        saved_shares[sender] = j_shares
+
+            # if t+1 in the saved_set, interpolate and sell all OK
+            if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated and not ok_sent:
+                # Batch size
+                shares = []
+                for i in range(secret_count):
+                    phi_coords = [
+                        (j + 1, saved_shares[j][i]) for j in range(self.n) if saved_shares[j] is not None
+                    ]
+                    phi_i = self.poly.interpolate(phi_coords)
+                    shares.append(phi_i(self.my_id + 1))
+                all_shares_valid = True
+                interpolated = True
+                multicast((HbAVSSMessageType.OK, ""))
+                ok_sent = True
+
+            # OK
+            if avss_msg[0] == HbAVSSMessageType.OK and sender not in ok_set:
+                # logger.debug("[%d] Received OK from [%d]", self.my_id, sender)
+                ok_set.add(sender)
+                if len(ok_set) >= (2 * self.t + 1) and not ready_sent:
+                    ready_sent = True
+                    multicast((HbAVSSMessageType.READY, ""))
+            # READY
+            if avss_msg[0] == HbAVSSMessageType.READY and (sender not in ready_set):
+                # logger.debug("[%d] Received READY from [%d]", self.my_id, sender)
+                ready_set.add(sender)
+                if len(ready_set) >= (self.t + 1) and not ready_sent:
+                    ready_sent = True
+                    multicast((HbAVSSMessageType.READY, ""))
+            # if 2t+1 ready -> output shares
+            if len(ready_set) >= (2 * self.t + 1):
+                # output result by setting the future value
+                if all_shares_valid and not output:
+                    int_shares = [int(shares[i]) for i in range(len(shares))]
+                    self.output_queue.put_nowait((dealer_id, avss_id, int_shares))
+                    output = True
+                    logger.debug("[%d] Output", self.my_id)
+
+            # The only condition where we can terminate
+            # Modified so it can terminate.
+            if (len(ok_set) == 3 * self.t + 1) and output:
+                logger.debug("[%d] exit", self.my_id)
+                break
+
+async def hbavss_batchloglin_pcl_one_faulty_share(benchmark_router, params):
+    (t, n, g, h, pks, sks, crs, values) = params
+    fault_i = randint(1, n - 1)
+    # fault_i = 4
+    # fault_k = randint(1, len(values) - 1)
+    sends, recvs, _ = benchmark_router(n)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+    pcl = PolyCommitLoglinDummy(crs=None, degree_max=t)
+
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = None
+            if i != fault_i:
+                hbavss = HbAvssBatchLoglin_always_accept_implicates(pks, sks[i], crs, n, t, i, sends[i],
+                                                                                   recvs[i],
+                                                                                   pc=pcl)
+            else:
+                hbavss = HbAvssBatchLoglin_always_send_and_accept_implicates(pks, sks[i], crs, n, t, i,
+                                                                                            sends[i],
+                                                                                            recvs[i], pc=pcl)
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        for task in avss_tasks:
+            task.cancel()
+
+@mark.parametrize(
+    "batch_multiple, t",
+    [
+        (1, 30),
+        (2, 30),
+        (3, 30),
+        (5, 30),
+        (8, 30),
+        (11, 30)
+    ],
+)
+def test_hbavss_batchloglin_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
+    from pypairing import G1, ZR
+    loop = asyncio.get_event_loop()
+    n = 3 * t + 1
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    values = [ZR.random()] * batch_multiple * (t + 1)
+    crs = [g]
+    params = (t, n, g, h, pks, sks, crs, values)
+
+    def _prog():
+        loop.run_until_complete(hbavss_batchloglin_pcl_one_faulty_share(benchmark_router, params))
+
+    benchmark(_prog)
+
+async def hbavss_batchloglin_pcl_max_faulty_shares(benchmark_router, params):
+    (t, n, g, h, pks, sks, crs, values) = params
+    fault_is = [randint(1, n - 1) for _ in range(t)]
+    # fault_k = randint(1, len(values) - 1)
+    sends, recvs, _ = benchmark_router(n)
+    avss_tasks = [None] * n
+    dealer_id = randint(0, n - 1)
+    pcl = PolyCommitLoglinDummy(crs=None, degree_max=t)
+
+    with ExitStack() as stack:
+        hbavss_list = [None] * n
+        for i in range(n):
+            hbavss = None
+            if i not in fault_is:
+                hbavss = HbAvssBatchLoglin_always_accept_implicates(pks, sks[i], crs, n, t, i,
+                                                                                   sends[i],
+                                                                                   recvs[i],
+                                                                                   pc=pcl)
+            else:
+                hbavss = HbAvssBatchLoglin_always_send_and_accept_implicates(pks, sks[i], crs, n, t,
+                                                                                            i,
+                                                                                            sends[i],
+                                                                                            recvs[i], pc=pcl)
+            hbavss_list[i] = hbavss
+            stack.enter_context(hbavss)
+            if i == dealer_id:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, values=values))
+            else:
+                avss_tasks[i] = asyncio.create_task(hbavss.avss(0, dealer_id=dealer_id))
+            avss_tasks[i].add_done_callback(print_exception_callback)
+        await asyncio.gather(
+            *[hbavss_list[i].output_queue.get() for i in range(n)]
+        )
+        for task in avss_tasks:
+            task.cancel()
+
+@mark.parametrize(
+    "batch_multiple, t",
+    [
+        (1, 30),
+        (2, 30),
+        (3, 30),
+        (5, 30),
+        (8, 30),
+        (11, 30)
+    ],
+)
+def test_hbavss_batchloglin_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multiple, t):
+    from pypairing import G1, ZR
+    loop = asyncio.get_event_loop()
+    n = 3 * t + 1
+    g, h, pks, sks = get_avss_params_pyp(n, t)
+    values = [ZR.random()] * batch_multiple * (t + 1)
+    crs = [g]
+    params = (t, n, g, h, pks, sks, crs, values)
+
+    def _prog():
+        loop.run_until_complete(hbavss_batchloglin_pcl_max_faulty_shares(benchmark_router, params))
+
+    benchmark(_prog)
