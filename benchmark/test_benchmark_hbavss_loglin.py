@@ -626,7 +626,7 @@ class Hbacss1_always_send_and_accept_implicates(
                         in_share_recovery = True
                     logger.debug("[%d] after implicate from [%d] %d", self.my_id, sender, int(in_share_recovery))
 
-            if in_share_recovery and all_shares_valid and not sent_r1:
+            if in_share_recovery and all_shares_valid and not sent_r1 and not sent_r2:
                 logger.debug("[%d] prev sent r1", self.my_id)
 
                 # the proofs for the specific shares held by this node
@@ -675,7 +675,7 @@ class Hbacss1_always_send_and_accept_implicates(
                     # todo, replace with robust interpolate that takes at least 2t+1 values
                     # this will still interpolate the correct degree t polynomial if all points are correct
                     r2_poly = self.poly.interpolate(r2_coords)
-                    outshares = [r2_poly(i) for i in range(self.t + 1)]
+                    shares = [r2_poly(i) for i in range(self.t + 1)]
                     multicast((HbAVSSMessageType.OK, ""))
                     ok_sent = True
                     all_shares_valid = True
