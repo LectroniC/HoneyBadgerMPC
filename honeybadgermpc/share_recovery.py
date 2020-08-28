@@ -1,5 +1,6 @@
 import logging
-import pypairing
+from pypairing import ZR, G1
+#from honeybadgermpc.betterpairing import ZR, G1
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_dummy import SimulatedPclProof
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger.setLevel(logging.NOTSET)
 # assumes there's a total of t+1 secrets
 class HbACSS1Recoverer:
     def __init__(self, crs, n, t, my_id, send, recv, shares, sharesvalid, commits, evalproofs, pc=None,
-                 field=pypairing.ZR):
+                 field=ZR):
         self.crs, self.n, self.t, self.my_id, self.send, self.recv, self.pc = crs, n, t, my_id, send, recv, pc
         self.poly = polynomials_over(field)
         # assume we have all the shares and proofs and know if they're valid
@@ -86,12 +87,12 @@ class HbACSS1Recoverer:
 
 
 # Helper Functions
-def lagrange_at_x(s, j, x):
+def lagrange_at_x(s, j, x,):
     s = sorted(s)
     assert j in s
     l1 = [x - jj for jj in s if jj != j]
     l2 = [j - jj for jj in s if jj != j]
-    (num, den) = (pypairing.ZR(1), pypairing.ZR(1))
+    (num, den) = (ZR(1), ZR(1))
     for item in l1:
         num *= item
     for item in l2:
@@ -110,7 +111,7 @@ def interpolate_g1_at_x(coords, x, order=-1):
     if isinstance(sortedcoords[0][1], SimulatedPclProof):
         out = SimulatedPclProof(1)
     else:
-        out = pypairing.G1.identity()
+        out = G1.identity()
     for i in range(order):
         out *= (sortedcoords[i][1] ** (lagrange_at_x(s, xs[i], x)))
     return out
@@ -150,7 +151,7 @@ def poly_lagrange_at_x(s, j, x):
     assert j in s
     l1 = [x - jj for jj in s if jj != j]
     l2 = [j - jj for jj in s if jj != j]
-    (num, den) = (pypairing.ZR(1), pypairing.ZR(1))
+    (num, den) = (ZR(1), ZR(1))
     for item in l1:
         num *= item
     for item in l2:

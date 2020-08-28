@@ -11,7 +11,7 @@ class PolyCommitConstDL:
         self.gg = pair(self.gs[0],(self.ghats[0]))
         self.field = field
 
-    def commit(self, phi):
+    def commit(self, phi, aux=None):
         c = G1.identity()
         i = 0
         for item in self.gs:
@@ -30,6 +30,15 @@ class PolyCommitConstDL:
             witness *= item ** psi.coeffs[j]
             j += 1
         return witness
+    
+    def double_batch_create_witness(self, phis, aux=None, n=None):
+        t = len(phis[0].coeffs) - 1
+        numpolys = len(phis)
+        if n is None:
+            n = 3 * t + 1
+        #witnesses = [[] for _ in range(n)]
+        witnesses = [ [self.create_witness(phi, i) for phi in phis] for i in range(1, n+1)]
+        return witnesses
 
     def verify_eval(self, c, i, phi_at_i, witness):
         lhs = pair(c, self.ghats[0])
@@ -38,6 +47,12 @@ class PolyCommitConstDL:
             * self.gg ** phi_at_i
         )
         return lhs == rhs
+    
+    def batch_verify_eval(self, cs, i, phis_at_i, witness, degree=None):
+        out = True
+        for j in range(len(phis_at_i)):
+            out &= self.verify_eval(cs[j], i, phis_at_i[j], witness[j])
+        return out
 
     def preprocess_verifier(self, level=4):
         self.gg.preprocess(level)
@@ -47,7 +62,7 @@ class PolyCommitConstDL:
             item.preprocess(level)
 
 
-def gen_pc_const_dl_crs(t, alpha=None, g=None, ghat=None):
+def gen_pc_const_dl_crs(t, alpha=None, g=None, ghat=None, ZR=ZR, G1=G1, G2=G2):
     nonetype = type(None)
     assert type(t) is int
     assert type(alpha) in (ZR, int, nonetype)

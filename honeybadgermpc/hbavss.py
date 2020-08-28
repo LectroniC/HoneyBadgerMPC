@@ -2,7 +2,8 @@ import logging
 import asyncio
 import pypairing
 from pickle import dumps, loads
-from honeybadgermpc.betterpairing import ZR, G1
+#from honeybadgermpc.betterpairing import ZR, G1
+from pypairing import ZR, G1
 from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_log import PolyCommitLog
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
@@ -40,11 +41,15 @@ def get_avss_params(n, t):
 
 class Hbacss0:
     def __init__(
-            self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=pypairing.ZR
+            self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
     ):  # (# noqa: E501)
         self.public_keys, self.private_key = public_keys, private_key
         self.n, self.t, self.my_id = n, t, my_id
-        self.g = crs[0]
+        #todo: g should be baked into the pki or something
+        if type(crs[0]) is G1:
+            self.g = crs[0]
+        else:
+            self.g = crs[0][0]
 
         # Create a mechanism to split the `recv` channels based on `tag`
         self.subscribe_recv_task, self.subscribe_recv = subscribe_recv(recv)
@@ -284,7 +289,7 @@ class Hbacss0:
         # BatchPolyCommit
         #   Cs  <- BatchPolyCommit(SP,φ(·,k))
         # TODO: Whether we should keep track of that or not
-        r = pypairing.ZR.random()
+        r = ZR.random()
         for k in range(secret_count):
             phi[k] = self.poly.random(self.t, values[k])
             commitments[k] = self.poly_commit.commit(phi[k], r)
@@ -344,7 +349,6 @@ class Hbacss0:
 
         tag = f"{dealer_id}-{avss_id}-B-RBC"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
-
         logger.debug("[%d] Starting reliable broadcast", self.my_id)
         rbc_msg = await reliablebroadcast(
             tag,
@@ -357,13 +361,11 @@ class Hbacss0:
             send,
             client_mode=client_mode,
         )  # (# noqa: E501)
-
         tag = f"{dealer_id}-{avss_id}-B-AVID"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
 
         logger.debug("[%d] Starting AVID disperse", self.my_id)
         avid = AVID(n, self.t, dealer_id, recv, send, n)
-
         if client_mode and self.my_id == dealer_id:
             # In client_mode, the dealer is not supposed to do
             # anything after sending the initial value.
@@ -420,7 +422,7 @@ class Hbacss1(Hbacss0):
                 implicate_sent = True
 
         # Insert random shares
-        # witnesses = [pypairing.G1.rand() for _ in range(secret_count)]
+        # witnesses = [G1.rand() for _ in range(secret_count)]
 
         # call if decryption was successful
         if all_shares_valid:
@@ -435,7 +437,6 @@ class Hbacss1(Hbacss0):
             logger.debug("[%d] OK", self.my_id)
             multicast((HbAVSSMessageType.OK, ""))
             ok_sent = True
-
         ok_set = set()
         ready_set = set()
         implicate_set = set()
@@ -568,7 +569,7 @@ class Hbacss1(Hbacss0):
 
 class Hbacss2:
     def __init__(
-            self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=pypairing.ZR
+            self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
     ):  # (# noqa: E501)
         self.public_keys, self.private_key = public_keys, private_key
         self.n, self.t, self.my_id = n, t, my_id
@@ -879,7 +880,7 @@ class Hbacss2:
         logger.debug("[%d] Start generating msg", self.my_id)
         secret_count = len(values)
         redundant_poly_count = secret_count // (self.t + 1) * (n - (self.t + 1))
-        r = pypairing.ZR.random()
+        r = ZR.random()
         phis = [self.poly.random(self.t, values[k]) for k in range(secret_count)]
         psis = []
         orig_poly_commitments = [self.poly_commit.commit(phis[k], r) for k in range(secret_count)]
