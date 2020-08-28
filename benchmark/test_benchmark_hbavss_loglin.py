@@ -23,27 +23,27 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 # Uncomment this when you want logs from this file.
-logger.setLevel(logging.NOTSET)
+# logger.setLevel(logging.NOTSET)
 
 mul_t_param_list = [
-    (1, 4)
-    # (2, 4),
-    # (3, 4),
-    # (5, 4),
-    # (8, 4),
-    # (11, 4),
-    # (1, 10),
-    # (2, 10),
-    # (3, 10),
-    # (5, 10),
-    # (8, 10),
-    # (11, 10),
-    # (1, 33),
-    # (2, 33),
-    # (3, 33),
-    # (5, 33),
-    # (8, 33),
-    # (11, 33)
+    (1, 4),
+    (2, 4),
+    (3, 4),
+    (5, 4),
+    (8, 4),
+    (11, 4),
+    (1, 10),
+    (2, 10),
+    (3, 10),
+    (5, 10),
+    (8, 10),
+    (11, 10),
+    (1, 33),
+    (2, 33),
+    (3, 33),
+    (5, 33),
+    (8, 33),
+    (11, 33)
 ]
 
 
@@ -365,7 +365,7 @@ async def hbacss2_pcl_all_correct(benchmark_router, params):
     "batch_multiple, t",
     mul_t_param_list,
 )
-def test_hbavss2_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t):
+def test_hbacss2_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
@@ -418,7 +418,7 @@ async def hbacss2_pcl_one_faulty_share(benchmark_router, params):
     "batch_multiple, t",
     mul_t_param_list,
 )
-def test_hbavss2_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
+def test_hbacss2_pcl_one_faulty_share(benchmark_router, benchmark, batch_multiple, t):
     from pypairing import G1, ZR
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
@@ -903,7 +903,7 @@ class Hbacss0_always_accept_implicates(Hbacss0):
         return True
 
 
-class Hbacss0_always_send_and_accept_implicates(Hbacss0):
+class Hbacss0_always_send_and_accept_implicates(Hbacss0_always_accept_implicates):
     async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
         tag = f"{dealer_id}-{avss_id}-B-AVSS"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
@@ -985,23 +985,24 @@ class Hbacss0_always_send_and_accept_implicates(Hbacss0):
                     ):
                         # proceed to share recovery
                         in_share_recovery = True
-                    # logger.debug("[%d] after implication", self.my_id)
+                        logger.debug("[%d] after implication", self.my_id)
 
             if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
+                logger.debug("[%d] sent_kdi_broadcast", self.my_id)
                 kdi = pow(ephemeral_public_key, self.private_key)
                 # The third value doesn't matter
                 multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
                 kdi_broadcast_sent = True
-                in_share_recovery = False
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
+                logger.debug("[%d] received_kdi_broadcast from sender %d", self.my_id, sender)
                 retrieved_msg = await avid.retrieve(tag, sender)
                 try:
                     j_shares, j_witnesses = SymmetricCrypto.decrypt(
                         str(avss_msg[1]).encode(), retrieved_msg
                     )
                 except Exception as e:  # TODO: Add specific exception
-                    logger.warn("Implicate confirmed, bad encryption:", e)
+                    logger.debug("Implicate confirmed, bad encryption:", e)
                 if (self.poly_commit.batch_verify_eval(commitments,
                                                        sender + 1, j_shares, j_witnesses)):
                     if not saved_shares[sender]:
@@ -1066,7 +1067,7 @@ async def hbacss0_pcl_all_correct(benchmark_router, params):
     with ExitStack() as stack:
         hbavss_list = [None] * n
         for i in range(n):
-            hbavss = hbacss0(pks, sks[i], crs, n, t, i, sends[i],
+            hbavss = Hbacss0(pks, sks[i], crs, n, t, i, sends[i],
                              recvs[i],
                              pc=pcl)
             hbavss_list[i] = hbavss
@@ -1105,7 +1106,7 @@ def test_hbacss0_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t)
 async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
-    # fault_i = 4
+    fault_i = 4
     # fault_k = randint(1, len(values) - 1)
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n

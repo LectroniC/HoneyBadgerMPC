@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
 # Uncomment this when you want logs from this file.
-logger.setLevel(logging.NOTSET)
+# logger.setLevel(logging.NOTSET)
 
 
 class HbAVSSMessageType:
@@ -199,23 +199,24 @@ class Hbacss0:
                     ):
                         # proceed to share recovery
                         in_share_recovery = True
-                    # logger.debug("[%d] after implication", self.my_id)
+                    logger.debug("[%d] after implication", self.my_id)
 
             if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
+                logger.debug("[%d] sent_kdi_broadcast", self.my_id)
                 kdi = pow(ephemeral_public_key, self.private_key)
                 # The third value doesn't matter
                 multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
                 kdi_broadcast_sent = True
-                in_share_recovery = False
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
+                logger.debug("[%d] received_kdi_broadcast from sender %d", self.my_id, sender)
                 retrieved_msg = await avid.retrieve(tag, sender)
                 try:
                     j_shares, j_witnesses = SymmetricCrypto.decrypt(
                         str(avss_msg[1]).encode(), retrieved_msg
                     )
                 except Exception as e:  # TODO: Add specific exception
-                    logger.warn("Implicate confirmed, bad encryption:", e)
+                    logger.debug("Implicate confirmed, bad encryption:", e)
                 if (self.poly_commit.batch_verify_eval(commitments,
                                                        sender + 1, j_shares, j_witnesses)):
                     if not saved_shares[sender]:
