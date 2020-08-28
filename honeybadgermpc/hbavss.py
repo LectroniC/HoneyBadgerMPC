@@ -199,7 +199,7 @@ class Hbacss0:
                     ):
                         # proceed to share recovery
                         in_share_recovery = True
-                    logger.debug("[%d] after implication", self.my_id)
+                        logger.debug("[%d] after implication", self.my_id)
 
             if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
                 logger.debug("[%d] sent_kdi_broadcast", self.my_id)
@@ -207,6 +207,7 @@ class Hbacss0:
                 # The third value doesn't matter
                 multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
                 kdi_broadcast_sent = True
+                all_shares_valid = False
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
                 logger.debug("[%d] received_kdi_broadcast from sender %d", self.my_id, sender)
@@ -224,7 +225,8 @@ class Hbacss0:
                         saved_shares[sender] = j_shares
 
             # if t+1 in the saved_set, interpolate and sell all OK
-            if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated and not ok_sent:
+            if in_share_recovery and saved_shared_actual_length >= self.t + 1 and not interpolated:
+                logger.debug("[%d] interpolating", self.my_id)
                 # Batch size
                 shares = []
                 for i in range(secret_count):
@@ -234,6 +236,7 @@ class Hbacss0:
                     phi_i = self.poly.interpolate(phi_coords)
                     shares.append(phi_i(self.my_id + 1))
                 all_shares_valid = True
+                in_share_recovery = False
                 interpolated = True
                 multicast((HbAVSSMessageType.OK, ""))
                 ok_sent = True
