@@ -171,7 +171,7 @@ async def test_hbacss1(test_router):
     crs = gen_pc_const_dl_crs(t, g=g)
     pc = PolyCommitConstDL(crs)
 
-    values = [ZR.random()] * (t + 1)
+    values = [ZR.random()] * 2 * (t + 1)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
 
@@ -253,7 +253,7 @@ async def test_hbacss1_share_fault(test_router):
     crs = gen_pc_const_dl_crs(t, g=g)
     pc = PolyCommitConstDL(crs)
 
-    values = [ZR.random()] * (t + 1)
+    values = [ZR.random()] * 3 * (t + 1)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
 
@@ -283,7 +283,6 @@ async def test_hbacss1_share_fault(test_router):
         recovered_values.append(
             polynomials_over(ZR).interpolate_at(zip(range(1, n + 1), item))
         )
-    print("Done!")
     assert recovered_values == values
 
 @mark.asyncio

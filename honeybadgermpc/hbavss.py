@@ -72,6 +72,8 @@ class Hbacss0:
         self.tasks = []
         self.shares_future = asyncio.Future()
         self.output_queue = asyncio.Queue()
+        self._init_recovery_vars()
+        self.tagvars = {}
 
     async def _recv_loop(self, q):
         while True:
@@ -124,15 +126,72 @@ class Hbacss0:
             commitments, j + 1, j_shares, j_witnesses
         )
 
+    def _init_recovery_vars(self):
+        self.kdi_broadcast_sent = False
+        self.saved_shares = [None] * self.n
+        self.saved_shared_actual_length = 0
+        self.interpolated = False
+
+    # this function should eventually multicast OK, set self.ok_sent and self.all_shares_valid to True, and set self.tagvars[tag]['shares']
+    async def _handle_share_recovery(self, tag, sender=None, avss_msg=None):
+        send, recv, multicast = self.tagvars[tag]['io']
+        if self.in_share_recovery and self.all_shares_valid and not self.kdi_broadcast_sent:
+            logger.debug("[%d] sent_kdi_broadcast", self.my_id)
+            kdi = self.tagvars[tag]['shared_key']
+            # The third value doesn't matter
+            multicast((HbAVSSMessageType.KDIBROADCAST, kdi))
+            self.kdi_broadcast_sent = True
+            self.all_shares_valid = False
+        if avss_msg is None:
+            return
+
+        if self.in_share_recovery and avss_msg[0] == HbAVSSMessageType.KDIBROADCAST:
+            logger.debug("[%d] received_kdi_broadcast from sender %d", self.my_id, sender)
+            avid = self.tagvars[tag]['avid']
+            retrieved_msg = await avid.retrieve(tag, sender)
+            try:
+                j_shares, j_witnesses = SymmetricCrypto.decrypt(
+                    str(avss_msg[1]).encode(), retrieved_msg
+                )
+            except Exception as e:  # TODO: Add specific exception
+                logger.debug("Implicate confirmed, bad encryption:", e)
+            commitments = self.tagvars[tag]['commitments']
+            if (self.poly_commit.batch_verify_eval(commitments,
+                                                   sender + 1, j_shares, j_witnesses)):
+                if not self.saved_shares[sender]:
+                    self.saved_shared_actual_length += 1
+                    self.saved_shares[sender] = j_shares
+
+        # if t+1 in the saved_set, interpolate and sell all OK
+        if self.in_share_recovery and self.saved_shared_actual_length >= self.t + 1 and not self.interpolated:
+            logger.debug("[%d] interpolating", self.my_id)
+            # Batch size
+            shares = []
+            secret_count = len(self.tagvars[tag]['commitments'])
+            for i in range(secret_count):
+                phi_coords = [
+                    (j + 1, self.saved_shares[j][i]) for j in range(self.n) if self.saved_shares[j] is not None
+                ]
+                phi_i = self.poly.interpolate(phi_coords)
+                shares.append(phi_i(self.my_id + 1))
+            self.all_shares_valid = True
+            self.tagvars[tag]['shares'] = shares
+            self.in_share_recovery = False
+            self.interpolated = True
+            multicast((HbAVSSMessageType.OK, ""))
+            self.ok_sent = True
+        
     async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
         tag = f"{dealer_id}-{avss_id}-B-AVSS"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
+        self.tagvars[tag] = {}
 
         def multicast(msg):
             for i in range(self.n):
                 send(i, msg)
 
-        ok_sent = False
+        self.tagvars[tag]['io'] = [send, recv, multicast]
+        self.ok_sent = False
         implicate_sent = False
         # get phi and public key from reliable broadcast msg
         commitments, ephemeral_public_key = loads(rbc_msg)
@@ -144,45 +203,47 @@ class Hbacss0:
 
         # all_encrypted_witnesses: n
         shared_key = pow(ephemeral_public_key, self.private_key)
+        self.tagvars[tag]['shared_key'] = shared_key
+        self.tagvars[tag]['commitments'] = commitments
+        self.tagvars[tag]['avid'] = avid
 
-        shares = [None] * secret_count
-        witnesses = [None] * secret_count
         # Decrypt
-        all_shares_valid = True
+        self.all_shares_valid = True
         try:
             shares, witnesses = SymmetricCrypto.decrypt(str(shared_key).encode(), dispersal_msg)
         except ValueError as e:  # TODO: more specific exception
             logger.warn(f"Implicate due to failure in decrypting: {e}")
-            all_shares_valid = False
+            self.all_shares_valid = False
             if not implicate_sent:
                 multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
                 implicate_sent = True
 
         # call if decryption was successful
-        if all_shares_valid:
+        if self.all_shares_valid:
             if not self.poly_commit.batch_verify_eval(
                     commitments, self.my_id + 1, shares, witnesses
             ):
                 if not implicate_sent:
                     multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
                     implicate_sent = True
-                all_shares_valid = False
-        if all_shares_valid and not ok_sent:
+                self.all_shares_valid = False
+            else:
+                self.tagvars[tag]['shares'] = shares
+                self.tagvars[tag]['witnesses'] = witnesses
+                
+        if self.all_shares_valid and not self.ok_sent:
             logger.debug("[%d] OK", self.my_id)
             logger.info(f"OK_timestamp: {time.time()}")
             multicast((HbAVSSMessageType.OK, ""))
-            ok_sent = True
+            self.ok_sent = True
 
         ok_set = set()
         ready_set = set()
         implicate_set = set()
-        saved_shares = [None] * self.n
-        saved_shared_actual_length = 0
         output = False
-        in_share_recovery = False
+        #todo: tag-dependent variables like this should be in tagvars
+        self.in_share_recovery = False
         ready_sent = False
-        interpolated = False
-        kdi_broadcast_sent = False
 
         while True:
             # Bracha-style agreement
@@ -203,9 +264,13 @@ class Hbacss0:
                             avss_msg[1]
                     ):
                         # proceed to share recovery
-                        in_share_recovery = True
+                        self.in_share_recovery = True
                         logger.debug("[%d] after implication", self.my_id)
-
+                        await self._handle_share_recovery(tag)
+            #todo find a more graceful way to handle different protocols having different recovery message types
+            if avss_msg[0] in [HbAVSSMessageType.KDIBROADCAST, HbAVSSMessageType.RECOVERY1, HbAVSSMessageType.RECOVERY2]:
+                await self._handle_share_recovery(tag, sender, avss_msg)
+            '''
             if in_share_recovery and all_shares_valid and not kdi_broadcast_sent:
                 logger.debug("[%d] sent_kdi_broadcast", self.my_id)
                 kdi = pow(ephemeral_public_key, self.private_key)
@@ -245,7 +310,7 @@ class Hbacss0:
                 interpolated = True
                 multicast((HbAVSSMessageType.OK, ""))
                 ok_sent = True
-
+            '''
             # OK
             if avss_msg[0] == HbAVSSMessageType.OK and sender not in ok_set:
                 # logger.debug("[%d] Received OK from [%d]", self.my_id, sender)
@@ -263,7 +328,8 @@ class Hbacss0:
             # if 2t+1 ready -> output shares
             if len(ready_set) >= (2 * self.t + 1):
                 # output result by setting the future value
-                if all_shares_valid and not output:
+                if self.all_shares_valid and not output:
+                    shares = self.tagvars[tag]['shares']
                     int_shares = [int(shares[i]) for i in range(len(shares))]
                     self.output_queue.put_nowait((dealer_id, avss_id, int_shares))
                     output = True
@@ -380,10 +446,102 @@ class Hbacss0:
         await self._process_avss_msg(avss_id, dealer_id, rbc_msg, avid)
 
 
-# Notice that by extending from HbAvssBatchLoglin we are using non-interpolatable polycommit
-# so the following code cannot work by default and there are certain modification to get it work just by
-# replacing with random values
 class Hbacss1(Hbacss0):
+    def _init_recovery_vars(self):
+        self.finished_interpolating_commits = False
+        
+        
+    async def _handle_share_recovery(self, tag, sender=None, avss_msg=[""]):
+        if not self.in_share_recovery: #self.tagvars['in_share_recovery']:
+            return
+        ls = len(self.tagvars[tag]['commitments']) // (self.t + 1)
+        send, recv, multicast = self.tagvars[tag]['io']
+        if not self.finished_interpolating_commits:
+            all_commits = [ [] for l in range(ls)]
+            for l in range(ls):
+                known_commits = self.tagvars[tag]['commitments'][l * (self.t + 1): (1 + l) * (self.t + 1)]
+                known_commit_coords = [[i + 1, known_commits[i]] for i in range(self.t + 1)]
+                # line 502
+                interpolated_commits = [interpolate_g1_at_x(known_commit_coords, i + 1) for i in range(self.t + 1, self.n)]
+                all_commits[l] = known_commits + interpolated_commits
+            self.tagvars[tag]['all_commits'] = all_commits
+            self.finished_interpolating_commits = True
+
+            #init some variables we'll need later
+            self.r1_coords_l = [ [] for l in range(ls)]
+            self.r2_coords_l = [ [] for l in range(ls)]
+            self.sent_r2 = False
+            self.r1_set = set()
+            self.r2_set = set()
+            
+            if self.all_shares_valid:
+                logger.debug("[%d] prev sent r1", self.my_id)
+                all_evalproofs = [ [] for l in range(ls)]
+                all_points = [ [] for l in range(ls)]
+                for l in range(ls):
+                    # the proofs for the specific shares held by this node
+                    known_evalproofs = self.tagvars[tag]['witnesses'][l * (self.t + 1): (1 + l) * (self.t + 1)]
+                    known_evalproof_coords = [[i + 1, known_evalproofs[i]] for i in range(self.t + 1)]
+                    # line 504
+                    interpolated_evalproofs = [interpolate_g1_at_x(known_evalproof_coords, i + 1) for i in
+                                            range(self.t + 1, self.n)]
+                    all_evalproofs[l] = known_evalproofs + interpolated_evalproofs
+    
+                    # another way of doing the bivariate polynomial. Essentially the same as how commits are interpolated
+                    known_points = self.tagvars[tag]['shares'][l * (self.t + 1): (1 + l) * (self.t + 1)]
+                    known_point_coords = [[i + 1, known_points[i]] for i in range(self.t + 1)]
+                    # would probably be faster to interpolate the full polynomial and evaluate it at the rest of the points
+                    interpolated_points = [self.poly.interpolate_at(known_point_coords, i + 1) for i in
+                                        range(self.t + 1, self.n)]
+                    all_points[l] = known_points + interpolated_points
+                # lines 505-506
+                for j in range(self.n):
+                    send(j, (HbAVSSMessageType.RECOVERY1, [ all_points[l][j] for l in range(ls)] , [all_evalproofs[l][j] for l in range(ls)]))
+                logger.debug("[%d] sent r1", self.my_id)
+
+        if avss_msg[0] == HbAVSSMessageType.RECOVERY1 and not self.sent_r2:
+            logger.debug("[%d] prev sent r2", self.my_id)
+            _, points, proofs = avss_msg
+            all_commits = self.tagvars[tag]['all_commits']
+            if self.poly_commit.batch_verify_eval([all_commits[l][self.my_id] for l in range(ls)], sender + 1, points, proofs):
+                if sender not in self.r1_set:
+                    self.r1_set.add(sender)
+                    for l in range(ls):
+                        self.r1_coords_l[l].append([sender, points[l]])
+                    #r1_coords.append([sender, point])
+                if len(self.r1_set) == self.t + 1:
+                    #r1_poly = self.poly.interpolate(r1_coords)
+                    r1_poly_l = [ [] for l in range(ls)]
+                    for l in range(ls):
+                        r1_poly_l[l] = self.poly.interpolate(self.r1_coords_l[l])
+                    for j in range(self.n):
+                        r1_points_j = [r1_poly_l[l](j) for l in range(ls)]
+                        #send(j, (HbAVSSMessageType.RECOVERY2, r1_poly(j)))
+                        send(j, (HbAVSSMessageType.RECOVERY2, r1_points_j))
+                    self.sent_r2 = True
+                    logger.debug("[%d] sent r2", self.my_id)
+
+        if avss_msg[0] == HbAVSSMessageType.RECOVERY2 and self.sent_r2:
+            _, points = avss_msg
+            if sender not in self.r2_set:
+                self.r2_set.add(sender)
+                #r2_coords.append([sender, point])
+                for l in range(ls):
+                    self.r2_coords_l[l].append([sender, points[l]])
+            if len(self.r2_set) == 2 * self.t + 1:
+                # todo, replace with robust interpolate that takes at least 2t+1 values
+                # this will still interpolate the correct degree t polynomial if all points are correct
+                r2_poly_l = [ [] for l in range(ls)]
+                shares = []
+                for l in range(ls):
+                    r2_poly = self.poly.interpolate(self.r2_coords_l[l])
+                    shares += [r2_poly(i) for i in range(self.t + 1)]
+                multicast((HbAVSSMessageType.OK, ""))
+                self.ok_sent = True
+                self.all_shares_valid = True
+                self.tagvars[tag]['shares'] = shares
+
+class Hbacss10(Hbacss0):
     async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
         tag = f"{dealer_id}-{avss_id}-B-AVSS"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
@@ -451,15 +609,22 @@ class Hbacss1(Hbacss0):
 
         r1_set = set()
         r2_set = set()
-        r1_coords = []
-        r2_coords = []
-        # assume we've already reached share recovery and there are a total of t+1 secrets
-        known_commits = commitments
-        known_commit_coords = [[i + 1, known_commits[i]] for i in range(self.t + 1)]
-        # line 502
-        interpolated_commits = [interpolate_g1_at_x(known_commit_coords, i + 1) for i in
-                                range(self.t + 1, self.n)]
-        all_commits = known_commits + interpolated_commits
+        ls = len(shares) // (self.t + 1)
+        r1_coords_l = [ [] for l in range(ls)]
+        r2_coords_l = [ [] for l in range(ls)]
+        #r1_coords = []
+        #r2_coords = []
+        all_commits = [ [] for l in range(ls)]
+        all_evalproofs = [ [] for l in range(ls)]
+        all_points = [ [] for l in range(ls)]
+        
+        for l in range(ls):
+            # assume we've already reached share recovery and there are a total of t+1 secrets
+            known_commits = commitments[l * (self.t + 1): (1 + l) * (self.t + 1)]
+            known_commit_coords = [[i + 1, known_commits[i]] for i in range(self.t + 1)]
+            # line 502
+            interpolated_commits = [interpolate_g1_at_x(known_commit_coords, i + 1) for i in range(self.t + 1, self.n)]
+            all_commits[l] = known_commits + interpolated_commits
 
         while True:
             # Bracha-style agreement
@@ -486,53 +651,64 @@ class Hbacss1(Hbacss0):
             if in_share_recovery and all_shares_valid and not sent_r1 and not sent_r2:
                 logger.debug("[%d] prev sent r1", self.my_id)
 
-                # the proofs for the specific shares held by this node
-                known_evalproofs = witnesses
-                known_evalproof_coords = [[i + 1, known_evalproofs[i]] for i in range(self.t + 1)]
+                for l in range(ls):
+                    # the proofs for the specific shares held by this node
+                    known_evalproofs = witnesses[l * (self.t + 1): (1 + l) * (self.t + 1)]
+                    known_evalproof_coords = [[i + 1, known_evalproofs[i]] for i in range(self.t + 1)]
+                    # line 504
+                    interpolated_evalproofs = [interpolate_g1_at_x(known_evalproof_coords, i + 1) for i in
+                                            range(self.t + 1, self.n)]
+                    all_evalproofs[l] = known_evalproofs + interpolated_evalproofs
 
-                # line 504
-                interpolated_evalproofs = [interpolate_g1_at_x(known_evalproof_coords, i + 1) for i in
-                                           range(self.t + 1, self.n)]
-                all_evalproofs = known_evalproofs + interpolated_evalproofs
-
-                # another way of doing the bivariate polynomial. Essentially the same as how commits are interpolated
-                known_points = shares
-                known_point_coords = [[i + 1, known_points[i]] for i in range(self.t + 1)]
-                # would probably be faster to interpolate the full polynomial and evaluate it at the rest of the points
-                interpolated_points = [self.poly.interpolate_at(known_point_coords, i + 1) for i in
-                                       range(self.t + 1, self.n)]
-                all_points = known_points + interpolated_points
+                    # another way of doing the bivariate polynomial. Essentially the same as how commits are interpolated
+                    known_points = shares[l * (self.t + 1): (1 + l) * (self.t + 1)]
+                    known_point_coords = [[i + 1, known_points[i]] for i in range(self.t + 1)]
+                    # would probably be faster to interpolate the full polynomial and evaluate it at the rest of the points
+                    interpolated_points = [self.poly.interpolate_at(known_point_coords, i + 1) for i in
+                                        range(self.t + 1, self.n)]
+                    all_points[l] = known_points + interpolated_points
                 # lines 505-506
                 for j in range(self.n):
-                    send(j, (HbAVSSMessageType.RECOVERY1, all_points[j], all_evalproofs[j]))
+                    send(j, (HbAVSSMessageType.RECOVERY1, [ all_points[l][j] for l in range(ls)] , [all_evalproofs[l][j] for l in range(ls)]))
                 sent_r1 = True
                 logger.debug("[%d] sent r1", self.my_id)
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.RECOVERY1 and not sent_r2:
                 logger.debug("[%d] prev sent r2", self.my_id)
-                _, point, proof = avss_msg
-                if self.poly_commit.verify_eval(all_commits[self.my_id], sender + 1, point, proof):
+                _, points, proofs = avss_msg
+                if self.poly_commit.batch_verify_eval([all_commits[l][self.my_id] for l in range(ls)], sender + 1, points, proofs):
                     if sender not in r1_set:
                         r1_set.add(sender)
-                        r1_coords.append([sender, point])
+                        for l in range(ls):
+                            r1_coords_l[l].append([sender, points[l]])
+                        #r1_coords.append([sender, point])
                     if len(r1_set) == self.t + 1:
-                        r1_poly = self.poly.interpolate(r1_coords)
-                        # line
+                        #r1_poly = self.poly.interpolate(r1_coords)
+                        r1_poly_l = [ [] for l in range(ls)]
+                        for l in range(ls):
+                            r1_poly_l[l] = self.poly.interpolate(r1_coords_l[l])
                         for j in range(self.n):
-                            send(j, (HbAVSSMessageType.RECOVERY2, r1_poly(j)))
+                            r1_points_j = [r1_poly_l[l](j) for l in range(ls)]
+                            #send(j, (HbAVSSMessageType.RECOVERY2, r1_poly(j)))
+                            send(j, (HbAVSSMessageType.RECOVERY2, r1_points_j))
                         sent_r2 = True
                         logger.debug("[%d] sent r2", self.my_id)
 
             if in_share_recovery and avss_msg[0] == HbAVSSMessageType.RECOVERY2 and sent_r2:
+                _, points = avss_msg
                 if sender not in r2_set:
                     r2_set.add(sender)
-                    _, point = avss_msg
-                r2_coords.append([sender, point])
+                    #r2_coords.append([sender, point])
+                    for l in range(ls):
+                        r2_coords_l[l].append([sender, points[l]])
                 if len(r2_set) == 2 * self.t + 1:
                     # todo, replace with robust interpolate that takes at least 2t+1 values
                     # this will still interpolate the correct degree t polynomial if all points are correct
-                    r2_poly = self.poly.interpolate(r2_coords)
-                    shares = [r2_poly(i) for i in range(self.t + 1)]
+                    r2_poly_l = [ [] for l in range(ls)]
+                    shares = []
+                    for l in range(ls):
+                        r2_poly = self.poly.interpolate(r2_coords_l[l])
+                        shares += [r2_poly(i) for i in range(self.t + 1)]
                     multicast((HbAVSSMessageType.OK, ""))
                     ok_sent = True
                     all_shares_valid = True
