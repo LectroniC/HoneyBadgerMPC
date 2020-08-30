@@ -92,9 +92,6 @@ class Hbacss0:
         for task in self.tasks:
             task.cancel()
 
-    #async def _handle_implication(
-    #        self, avid, tag, ephemeral_public_key, commitments, j, j_sk
-    #):
     async def _handle_implication(self, tag, j, j_sk):
         """
         Handle the implication of AVSS.
@@ -193,38 +190,6 @@ class Hbacss0:
         # retrieve the z
         dispersal_msg = await avid.retrieve(tag, self.my_id)
 
-
-        '''
-        # Decrypt
-        self.all_shares_valid = True
-        try:
-            shares, witnesses = SymmetricCrypto.decrypt(str(shared_key).encode(), dispersal_msg)
-        except ValueError as e:  # TODO: more specific exception
-            logger.warn(f"Implicate due to failure in decrypting: {e}")
-            self.all_shares_valid = False
-            if not implicate_sent:
-                multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
-                implicate_sent = True
-
-        # call if decryption was successful
-        if self.all_shares_valid:
-            if not self.poly_commit.batch_verify_eval(
-                    commitments, self.my_id + 1, shares, witnesses
-            ):
-                if not implicate_sent:
-                    multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
-                    implicate_sent = True
-                self.all_shares_valid = False
-            else:
-                self.tagvars[tag]['shares'] = shares
-                self.tagvars[tag]['witnesses'] = witnesses
-                
-        if self.all_shares_valid and not self.ok_sent:
-            logger.debug("[%d] OK", self.my_id)
-            logger.info(f"OK_timestamp: {time.time()}")
-            multicast((HbAVSSMessageType.OK, ""))
-            self.ok_sent = True
-        '''
         # this function will both load information into the local variable store 
         # and verify share correctness
         self.all_shares_valid = self._handle_dealer_msgs(tag, dispersal_msg, rbc_msg)
@@ -512,9 +477,6 @@ class Hbacss1(Hbacss0):
 
 
 class Hbacss2(Hbacss0):
-    #async def _handle_implication(
-    #        self, avid, tag, ephemeral_public_key, orig_poly_commitments, redundant_poly_commitments, j, j_sk
-    #):
     async def _handle_implication(self, tag, j, j_sk):
         """
         Handle the implication of AVSS.
