@@ -2,7 +2,7 @@ import logging
 from pypairing import ZR, G1
 #from honeybadgermpc.betterpairing import ZR, G1
 from honeybadgermpc.polynomial import polynomials_over
-from honeybadgermpc.poly_commit_dummy import SimulatedPclProof
+from honeybadgermpc.poly_commit_dummy import SimulatedPclProof, SimulatedPclCom
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
@@ -110,6 +110,8 @@ def interpolate_g1_at_x(coords, x, order=-1):
     s = set(xs[0:order])
     if isinstance(sortedcoords[0][1], SimulatedPclProof):
         out = SimulatedPclProof(1)
+    elif isinstance(sortedcoords[0][1], SimulatedPclCom):
+        out = SimulatedPclCom()
     else:
         out = G1.identity()
     for i in range(order):
@@ -159,7 +161,7 @@ def poly_lagrange_at_x(s, j, x):
     return num / den
 
 
-def poly_interpolate_g1_at_x(poly, coords, x, order=-1):
+def poly_interpolate_at_x(poly, coords, x, order=-1):
     if order == -1:
         order = len(coords)
     xs = []

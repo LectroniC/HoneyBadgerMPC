@@ -68,6 +68,20 @@ class SimulatedPclProof:
         # No op
         return self
 
+class SimulatedPclCom:
+    def __init__(self):
+        size = 32
+        self.fake_content = [random.getrandbits(8) for _ in range(size)]
+    def __mul__(self, other):
+        # No op
+        return self
+    def __pow__(self, power, modulo=None):
+        # No op
+        return self
+    def __imul__(self, other):
+        # No op
+        return self
+
 class PolyCommitLoglinDummy:
 
     def __init__(self, crs=None, degree_max=33):
@@ -84,7 +98,8 @@ class PolyCommitLoglinDummy:
 
     def commit(self, phi, r):
         #return self.polycommit_loglin_bytes_generate(phi)
-        return G1(1)
+        #return G1(1)
+        return SimulatedPclCom()
 
     def create_witness(self, phi, r, i):
         pass

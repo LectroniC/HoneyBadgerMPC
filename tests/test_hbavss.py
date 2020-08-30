@@ -327,7 +327,7 @@ async def test_hbacss2(test_router):
 @mark.asyncio
 async def test_hbacss2_share_fault(test_router):
     from pypairing import G1, ZR
-    from honeybadgermpc.share_recovery import poly_lagrange_at_x, poly_interpolate_g1_at_x
+    from honeybadgermpc.share_recovery import poly_lagrange_at_x, poly_interpolate_at_x
     # Injects one invalid share
     class BadDealer(Hbacss2):
         def _get_dealer_msg(self, values, n):
@@ -341,7 +341,7 @@ async def test_hbacss2_share_fault(test_router):
             for batch_idx in range(secret_count // (self.t + 1)):
                 base_idx = batch_idx * (self.t + 1)
                 known_polys = [[i + 1, phis[base_idx + i]] for i in range(self.t + 1)]
-                psis.extend([poly_interpolate_g1_at_x(self.poly, known_polys, i + 1) for
+                psis.extend([poly_interpolate_at_x(self.poly, known_polys, i + 1) for
                              i in
                              range(self.t + 1, self.n)])
             redundant_poly_commitments = [self.poly_commit.commit(psis[k], r) for k in range(redundant_poly_count)]

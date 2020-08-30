@@ -10,7 +10,7 @@ from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 from honeybadgermpc.broadcast.reliablebroadcast import reliablebroadcast
 from honeybadgermpc.broadcast.avid import AVID
 from honeybadgermpc.utils.misc import wrap_send, subscribe_recv
-from honeybadgermpc.share_recovery import poly_lagrange_at_x, poly_interpolate_g1_at_x, interpolate_g1_at_x
+from honeybadgermpc.share_recovery import poly_lagrange_at_x, poly_interpolate_at_x, interpolate_g1_at_x
 import time
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ def get_avss_params(n, t):
 
 
 class Hbacss0:
+    #@profile
     def __init__(
             self, public_keys, private_key, crs, n, t, my_id, send, recv, pc=None, field=ZR
     ):  # (# noqa: E501)
@@ -91,7 +92,7 @@ class Hbacss0:
         self.avid_recv_task.cancel()
         for task in self.tasks:
             task.cancel()
-
+    #@profile
     async def _handle_implication(self, tag, j, j_sk):
         """
         Handle the implication of AVSS.
@@ -126,6 +127,7 @@ class Hbacss0:
         self.interpolated = False
 
     # this function should eventually multicast OK, set self.all_shares_valid to True, and set self.tagvars[tag]['shares']
+    #@profile
     async def _handle_share_recovery(self, tag, sender=None, avss_msg=[""]):
         send, recv, multicast = self.tagvars[tag]['io']
         if not self.in_share_recovery:
@@ -165,14 +167,13 @@ class Hbacss0:
                 phi_coords = [
                     (j + 1, self.saved_shares[j][i]) for j in range(self.n) if self.saved_shares[j] is not None
                 ]
-                phi_i = self.poly.interpolate(phi_coords)
-                shares.append(phi_i(self.my_id + 1))
+                shares.append(self.poly.interpolate_at(phi_coords, self.my_id + 1))
             self.all_shares_valid = True
             self.tagvars[tag]['shares'] = shares
             self.in_share_recovery = False
             self.interpolated = True
             multicast((HbAVSSMessageType.OK, ""))
-        
+    #@profile    
     async def _process_avss_msg(self, avss_id, dealer_id, rbc_msg, avid):
         tag = f"{dealer_id}-{avss_id}-B-AVSS"
         send, recv = self.get_send(tag), self.subscribe_recv(tag)
@@ -253,7 +254,7 @@ class Hbacss0:
             if (len(ok_set) == 3 * self.t + 1) and output:
                 logger.debug("[%d] exit", self.my_id)
                 break
-
+    #@profile
     def _get_dealer_msg(self, values, n):
         # Sample B random degree-(t) polynomials of form φ(·)
         # such that each φ_i(0) = si and φ_i(j) is Pj’s share of si
@@ -286,7 +287,7 @@ class Hbacss0:
             dispersal_msg_list[i] = zz
 
         return dumps((commitments, ephemeral_public_key)), dispersal_msg_list
-
+    #@profile
     def _handle_dealer_msgs(self, tag, dispersal_msg, rbc_msg):
         all_shares_valid = True
         commitments, ephemeral_public_key = loads(rbc_msg)
@@ -311,7 +312,7 @@ class Hbacss0:
             else:
                 all_shares_valid = False
         return all_shares_valid
-
+    #@profile
     async def avss(self, avss_id, values=None, dealer_id=None, client_mode=False):
         """
         A batched version of avss with share recovery
@@ -384,8 +385,7 @@ class Hbacss0:
 class Hbacss1(Hbacss0):
     def _init_recovery_vars(self):
         self.finished_interpolating_commits = False
-        
-        
+    #@profile
     async def _handle_share_recovery(self, tag, sender=None, avss_msg=[""]):
         if not self.in_share_recovery: #self.tagvars['in_share_recovery']:
             return
@@ -425,9 +425,8 @@ class Hbacss1(Hbacss0):
                     # another way of doing the bivariate polynomial. Essentially the same as how commits are interpolated
                     known_points = self.tagvars[tag]['shares'][l * (self.t + 1): (1 + l) * (self.t + 1)]
                     known_point_coords = [[i + 1, known_points[i]] for i in range(self.t + 1)]
-                    # would probably be faster to interpolate the full polynomial and evaluate it at the rest of the points
-                    interpolated_points = [self.poly.interpolate_at(known_point_coords, i + 1) for i in
-                                        range(self.t + 1, self.n)]
+                    mypoly = self.poly.interpolate(known_point_coords)
+                    interpolated_points = [mypoly(i+1) for i in range(self.t + 1, self.n)]
                     all_points[l] = known_points + interpolated_points
                 # lines 505-506
                 for j in range(self.n):
@@ -477,6 +476,7 @@ class Hbacss1(Hbacss0):
 
 
 class Hbacss2(Hbacss0):
+    #@profile
     async def _handle_implication(self, tag, j, j_sk):
         """
         Handle the implication of AVSS.
@@ -505,8 +505,8 @@ class Hbacss2(Hbacss0):
         for batch_idx in range(secret_count // (self.t + 1)):
             base_idx = batch_idx * (self.t + 1)
             known_coords = [[i + 1, j_orig_shares[base_idx + i]] for i in range(self.t + 1)]
-            j_redundant_shares += [self.poly.interpolate_at(known_coords, i + 1) for i in
-                                   range(self.t + 1, self.n)]
+            j_poly = self.poly.interpolate(known_coords)
+            j_redundant_shares += [j_poly(i + 1) for i in range(self.t + 1, self.n)]
 
         FLAG_verify_correct = True
         for i in range(len(j_orig_poly_witnesses)):
@@ -524,7 +524,7 @@ class Hbacss2(Hbacss0):
                 if not FLAG_verify_correct:
                     break
         return not FLAG_verify_correct
-
+    #@profile
     def _get_dealer_msg(self, values, n):
         # Notice we currently required the number of values shared to be divisible by t+1.
         logger.debug("[%d] Start generating msg", self.my_id)
@@ -537,7 +537,7 @@ class Hbacss2(Hbacss0):
         for batch_idx in range(secret_count // (self.t + 1)):
             base_idx = batch_idx * (self.t + 1)
             known_polys = [[i + 1, phis[base_idx + i]] for i in range(self.t + 1)]
-            psis.extend([poly_interpolate_g1_at_x(self.poly, known_polys, i + 1) for
+            psis.extend([poly_interpolate_at_x(self.poly, known_polys, i + 1) for
                          i in
                          range(self.t + 1, self.n)])
         redundant_poly_commitments = [self.poly_commit.commit(psis[k], r) for k in range(redundant_poly_count)]
@@ -561,7 +561,7 @@ class Hbacss2(Hbacss0):
             dispersal_msg_list[i] = zz
 
         return dumps((orig_poly_commitments, redundant_poly_commitments, ephemeral_public_key)), dispersal_msg_list
-
+    #@profile
     def _handle_dealer_msgs(self, tag, dispersal_msg, rbc_msg):
         all_shares_valid = True
         orig_poly_commitments, redundant_poly_commitments, ephemeral_public_key = loads(rbc_msg)
@@ -634,7 +634,7 @@ class Hbacss2(Hbacss0):
         self.r2_set = set()
         self.r1_value_ls = []
         self.r2_value_ls = []
-
+    #@profile
     async def _handle_share_recovery(self, tag, sender=None, avss_msg=[""]):
         if not self.in_share_recovery:
             return
