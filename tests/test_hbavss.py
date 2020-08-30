@@ -82,14 +82,12 @@ async def test_hbacss0_share_fault(test_router):
     from pypairing import G1, ZR
     # Injects one invalid share
     class BadDealer(Hbacss0):
-        def _get_dealer_msg(self, values, n, batch_size):
+        def _get_dealer_msg(self, values, n):
             # Sample B random degree-(t) polynomials of form φ(·)
             # such that each φ_i(0) = si and φ_i(j) is Pj’s share of si
             # The same as B (batch_size)
             fault_n = randint(1, n - 1)
             fault_k = randint(1, len(values) - 1)
-            while len(values) % (batch_size) != 0:
-                values.append(0)
             secret_count = len(values)
             phi = [None] * secret_count
             commitments = [None] * secret_count
@@ -107,7 +105,7 @@ async def test_hbacss0_share_fault(test_router):
             witnesses = self.poly_commit.double_batch_create_witness(phi, r)
             for i in range(n):
                 shared_key = pow(self.public_keys[i], ephemeral_secret_key)
-                phis_i = [phi[k](i + 1) for k in range(batch_size)]
+                phis_i = [phi[k](i + 1) for k in range(secret_count)]
                 if i == fault_n:
                     phis_i[fault_k] = ZR.random()
                 z = (phis_i, witnesses[i])
@@ -209,14 +207,12 @@ async def test_hbacss1_share_fault(test_router):
     #from honeybadgermpc.betterpairing import G1, ZR
     # Injects one invalid share
     class BadDealer(Hbacss1):
-        def _get_dealer_msg(self, values, n, batch_size):
+        def _get_dealer_msg(self, values, n):
             # Sample B random degree-(t) polynomials of form φ(·)
             # such that each φ_i(0) = si and φ_i(j) is Pj’s share of si
             # The same as B (batch_size)
             fault_n = randint(1, n - 1)
             fault_k = randint(1, len(values) - 1)
-            while len(values) % (batch_size) != 0:
-                values.append(0)
             secret_count = len(values)
             phi = [None] * secret_count
             commitments = [None] * secret_count
@@ -234,7 +230,7 @@ async def test_hbacss1_share_fault(test_router):
             witnesses = self.poly_commit.double_batch_create_witness(phi, r)
             for i in range(n):
                 shared_key = pow(self.public_keys[i], ephemeral_secret_key)
-                phis_i = [phi[k](i + 1) for k in range(batch_size)]
+                phis_i = [phi[k](i + 1) for k in range(secret_count)]
                 if i == fault_n:
                     phis_i[fault_k] = ZR.random()
                 z = (phis_i, witnesses[i])
