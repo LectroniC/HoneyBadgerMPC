@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
 # Uncomment this when you want logs from this file.
-# logger.setLevel(logging.NOTSET)
+logger.setLevel(logging.NOTSET)
 
 
 class HbAVSSMessageType:
@@ -220,8 +220,9 @@ class Hbacss0:
                     if await self._handle_implication(tag, sender, avss_msg[1]):
                         # proceed to share recovery
                         self.in_share_recovery = True
-                        logger.debug("[%d] after implication", self.my_id)
                         await self._handle_share_recovery(tag)
+                        logger.debug("[%d] after implication", self.my_id)
+
             #todo find a more graceful way to handle different protocols having different recovery message types
             if avss_msg[0] in [HbAVSSMessageType.KDIBROADCAST, HbAVSSMessageType.RECOVERY1, HbAVSSMessageType.RECOVERY2]:
                 await self._handle_share_recovery(tag, sender, avss_msg)

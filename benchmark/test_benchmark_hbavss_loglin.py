@@ -19,33 +19,34 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 # Uncomment this when you want logs from this file.
-# logger.setLevel(logging.NOTSET)
+logger.setLevel(logging.NOTSET)
 
 mul_t_param_list = [
-    (1, 3),
-    (3, 3),
-    (5, 3),
-    (7, 3),
-    (9, 3),
-    (11, 3),
-    (1, 16),
-    (3, 16),
-    (5, 16),
-    (7, 16),
-    (9, 16),
-    (11, 16),
-    (1, 33),
-    (3, 33),
-    (5, 33),
-    (7, 33),
-    (9, 33),
-    (11, 33),
-    (5, 1),
-    (5, 2),
-    (5, 5),
-    (5, 10),
-    (5, 22),
-    (5, 42)
+    (11, 33)
+    # (1, 3),
+    # (3, 3),
+    # (5, 3),
+    # (7, 3),
+    # (9, 3),
+    # (11, 3),
+    # (1, 16),
+    # (3, 16),
+    # (5, 16),
+    # (7, 16),
+    # (9, 16),
+    # (11, 16),
+    # (1, 33),
+    # (3, 33),
+    # (5, 33),
+    # (7, 33),
+    # (9, 33),
+    # (11, 33),
+    # (5, 1),
+    # (5, 2),
+    # (5, 5),
+    # (5, 10),
+    # (5, 22),
+    # (5, 42)
 ]
 
 
@@ -125,6 +126,7 @@ class Hbacss0_always_send_and_accept_implicates(Hbacss0_always_accept_implicates
             multicast((HbAVSSMessageType.OK, ""))
         else:
             multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+            self.all_shares_valid = False
             implicate_sent = True
 
         ok_set = set()
@@ -148,8 +150,8 @@ class Hbacss0_always_send_and_accept_implicates(Hbacss0_always_accept_implicates
                     if await self._handle_implication(tag, sender, avss_msg[1]):
                         # proceed to share recovery
                         self.in_share_recovery = True
-                        logger.debug("[%d] after implication", self.my_id)
                         await self._handle_share_recovery(tag)
+                        logger.debug("[%d] after implication", self.my_id)
             # todo find a more graceful way to handle different protocols having different recovery message types
             if avss_msg[0] in [HbAVSSMessageType.KDIBROADCAST, HbAVSSMessageType.RECOVERY1,
                                HbAVSSMessageType.RECOVERY2]:
@@ -241,6 +243,7 @@ class Hbacss1_always_send_and_accept_implicates(
             multicast((HbAVSSMessageType.OK, ""))
         else:
             multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+            self.all_shares_valid = False
             implicate_sent = True
 
         ok_set = set()
@@ -264,8 +267,8 @@ class Hbacss1_always_send_and_accept_implicates(
                     if await self._handle_implication(tag, sender, avss_msg[1]):
                         # proceed to share recovery
                         self.in_share_recovery = True
-                        logger.debug("[%d] after implication", self.my_id)
                         await self._handle_share_recovery(tag)
+                        logger.debug("[%d] after implication", self.my_id)
             # todo find a more graceful way to handle different protocols having different recovery message types
             if avss_msg[0] in [HbAVSSMessageType.KDIBROADCAST, HbAVSSMessageType.RECOVERY1,
                                HbAVSSMessageType.RECOVERY2]:
@@ -378,6 +381,7 @@ class Hbacss2_always_send_and_accept_implicates(Hbacss2_always_accept_implicates
             multicast((HbAVSSMessageType.OK, ""))
         else:
             multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
+            self.all_shares_valid = False
             implicate_sent = True
 
         ok_set = set()
@@ -401,8 +405,8 @@ class Hbacss2_always_send_and_accept_implicates(Hbacss2_always_accept_implicates
                     if await self._handle_implication(tag, sender, avss_msg[1]):
                         # proceed to share recovery
                         self.in_share_recovery = True
-                        logger.debug("[%d] after implication", self.my_id)
                         await self._handle_share_recovery(tag)
+                        logger.debug("[%d] after implication", self.my_id)
             # todo find a more graceful way to handle different protocols having different recovery message types
             if avss_msg[0] in [HbAVSSMessageType.KDIBROADCAST, HbAVSSMessageType.RECOVERY1,
                                HbAVSSMessageType.RECOVERY2]:
@@ -485,8 +489,6 @@ def test_hbacss2_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t)
 async def hbacss2_pcl_one_faulty_share(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
-    # fault_i = 4
-    fault_k = randint(1, len(values) - 1)
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
@@ -537,9 +539,7 @@ def test_hbacss2_pcl_one_faulty_share(benchmark_router, benchmark, batch_multipl
 
 async def hbacss2_pcl_max_faulty_shares(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
-    fault_is = [randint(1, n - 1) for _ in range(t)]
-    # fault_i = 4
-    fault_k = randint(1, len(values) - 1)
+    fault_is = [i for i in range(t, t+t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
@@ -637,8 +637,6 @@ def test_hbacss1_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t)
 async def hbacss1_pcl_one_faulty_share(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
-    # fault_i = 4
-    # fault_k = randint(1, len(values) - 1)
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
@@ -691,8 +689,7 @@ def test_hbacss1_pcl_one_faulty_share(benchmark_router, benchmark, batch_multipl
 
 async def hbacss1_pcl_max_faulty_shares(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
-    fault_is = [randint(1, n - 1) for _ in range(t)]
-    # fault_k = randint(1, len(values) - 1)
+    fault_is = [i for i in range(t, t+t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
@@ -746,9 +743,6 @@ def test_hbacss1_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multip
 
 async def hbacss0_pcl_all_correct(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
-    fault_i = randint(1, n - 1)
-    # fault_i = 4
-    # fault_k = randint(1, len(values) - 1)
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
@@ -796,8 +790,6 @@ def test_hbacss0_pcl_all_correct(benchmark_router, benchmark, batch_multiple, t)
 async def hbacss0_pcl_one_faulty_share(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_i = randint(1, n - 1)
-    fault_i = 4
-    # fault_k = randint(1, len(values) - 1)
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
@@ -850,8 +842,7 @@ def test_hbacss0_pcl_one_faulty_share(benchmark_router, benchmark, batch_multipl
 
 async def hbacss0_pcl_max_faulty_shares(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
-    fault_is = [randint(1, n - 1) for _ in range(t)]
-    # fault_k = randint(1, len(values) - 1)
+    fault_is = [i for i in range(t, t+t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
