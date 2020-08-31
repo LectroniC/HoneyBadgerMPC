@@ -43,12 +43,12 @@ def get_avss_params_pyp(n, t):
     return g, h, public_keys, private_keys
 
 mul_t_param_list_for_actual_pcl = [
-    (6, 1),
-    (6, 2),
-    (6, 5),
-    (6, 10),
-    (6, 22),
-    (6, 42)
+    (5, 1),
+    (5, 2),
+    (5, 5),
+    (5, 10),
+    (5, 22),
+    (5, 42)
 ]
 
 
