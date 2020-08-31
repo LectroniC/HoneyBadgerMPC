@@ -5,25 +5,6 @@ from honeybadgermpc.polynomial import polynomials_over
 from honeybadgermpc.poly_commit_log import PolyCommitLog
 import cProfile
 
-short_param_list_t = [1,
-                      2,
-                      5,
-                      10,
-                      22,
-                      42]
-
-
-@mark.parametrize("t", short_param_list_t)
-def test_hbacss2_size_benchmark_batch_creation(benchmark, t):
-    pc = PolyCommitLog(degree_max=t)
-    pc.preprocess_prover(16)
-    r = ZR.random()
-    phis = []
-    for _ in range(5):
-        phi_curr = polynomials_over(ZR).random(t)
-        phis.append(phi_curr)
-    benchmark(pc.double_batch_create_witness, phis, r)
-
 long_param_list_t = [1,
                      2,
                      3,
