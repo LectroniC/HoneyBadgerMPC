@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
 # Uncomment this when you want logs from this file.
-logger.setLevel(logging.NOTSET)
+# logger.setLevel(logging.NOTSET)
 
 
 class HbAVSSMessageType:
@@ -221,12 +221,7 @@ class Hbacss0:
                     #todo: implicate should be forwarded to others if we haven't sent one
                     if await self._handle_implication(tag, sender, avss_msg[1]):
                         # proceed to share recovery
-<<<<<<< HEAD
-                        self.in_share_recovery = True
-=======
                         self.tagvars[tag]['in_share_recovery'] = True
-                        logger.debug("[%d] after implication", self.my_id)
->>>>>>> 0924c669f9a6d87a8995d978209da8348343da06
                         await self._handle_share_recovery(tag)
                         logger.debug("[%d] after implication", self.my_id)
 

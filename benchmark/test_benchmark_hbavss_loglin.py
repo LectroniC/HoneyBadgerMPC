@@ -20,34 +20,33 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 # Uncomment this when you want logs from this file.
-logger.setLevel(logging.NOTSET)
+# logger.setLevel(logging.NOTSET)
 
 mul_t_param_list = [
-    (11, 33)
-    # (1, 3),
-    # (3, 3),
-    # (5, 3),
-    # (7, 3),
-    # (9, 3),
-    # (11, 3),
-    # (1, 16),
-    # (3, 16),
-    # (5, 16),
-    # (7, 16),
-    # (9, 16),
-    # (11, 16),
-    # (1, 33),
-    # (3, 33),
-    # (5, 33),
-    # (7, 33),
-    # (9, 33),
-    # (11, 33),
-    # (5, 1),
-    # (5, 2),
-    # (5, 5),
-    # (5, 10),
-    # (5, 22),
-    # (5, 42)
+    (1, 3),
+    (3, 3),
+    (5, 3),
+    (7, 3),
+    (9, 3),
+    (11, 3),
+    (1, 16),
+    (3, 16),
+    (5, 16),
+    (7, 16),
+    (9, 16),
+    (11, 16),
+    (1, 33),
+    (3, 33),
+    (5, 33),
+    (7, 33),
+    (9, 33),
+    (11, 33),
+    (5, 1),
+    (5, 2),
+    (5, 5),
+    (5, 10),
+    (5, 22),
+    (5, 42)
 ]
 
 
@@ -393,7 +392,6 @@ async def hbacss1_pcl_max_faulty_shares(benchmark_router, params):
         await asyncio.gather(
             *[hbavss_list[i].output_queue.get() for i in range(n)]
         )
-        logger.debug("gathered_output")
         for task in avss_tasks:
             task.cancel()
 
@@ -412,7 +410,6 @@ def test_hbacss1_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multip
     params = (t, n, g, h, pks, sks, crs, values)
 
     def _prog():
-        logger.debug("here")
         loop.run_until_complete(hbacss1_pcl_max_faulty_shares(benchmark_router, params))
 
     benchmark(_prog)
