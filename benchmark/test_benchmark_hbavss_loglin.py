@@ -9,6 +9,7 @@ from honeybadgermpc.poly_commit_dummy import PolyCommitAMTDummy, PolyCommitLogli
 from honeybadgermpc.hbavss import Hbacss0, Hbacss1, Hbacss2, HbAVSSMessageType
 from honeybadgermpc.field import GF
 from honeybadgermpc.utils.misc import print_exception_callback, wrap_send, subscribe_recv
+from honeybadgermpc.router import SimpleRouter
 import asyncio
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 import logging
@@ -47,7 +48,6 @@ mul_t_param_list = [
     (5, 22),
     (5, 42)
 ]
-
 
 
 def get_avss_params(n, t):
@@ -570,14 +570,13 @@ def test_hbacss0_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multip
 #main function to be used with kernprof
 if __name__ == "__main__":
     from pypairing import G1, ZR
-    from honeybadgermpc.router import SimpleRouter
     def benchmark_router(n):
         router = SimpleRouter(n)
         return router.sends, router.recvs, router.broadcasts
 
     loop = asyncio.get_event_loop()
-    t = 10
-    batch_multiple = 2
+    t = 33
+    batch_multiple = 11
     n = 3 * t + 1
     g, h, pks, sks = get_avss_params_pyp(n, t)
     values = [ZR.random()] * batch_multiple * (t + 1)

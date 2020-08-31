@@ -101,6 +101,12 @@ def lagrange_at_x(s, j, x,):
 
 
 def interpolate_g1_at_x(coords, x, order=-1):
+    if isinstance(coords[0][1], SimulatedPclProof):
+        out = SimulatedPclProof(1)
+        return out
+    elif isinstance(coords[0][1], SimulatedPclCom):
+        out = SimulatedPclCom()
+        return out
     if order == -1:
         order = len(coords)
     xs = []
@@ -108,12 +114,7 @@ def interpolate_g1_at_x(coords, x, order=-1):
     for coord in sortedcoords:
         xs.append(coord[0])
     s = set(xs[0:order])
-    if isinstance(sortedcoords[0][1], SimulatedPclProof):
-        out = SimulatedPclProof(1)
-    elif isinstance(sortedcoords[0][1], SimulatedPclCom):
-        out = SimulatedPclCom()
-    else:
-        out = G1.identity()
+    out = G1.identity()
     for i in range(order):
         out *= (sortedcoords[i][1] ** (lagrange_at_x(s, xs[i], x)))
     return out
