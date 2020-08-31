@@ -63,6 +63,7 @@ class Hbacss0:
 
         self.field = field
         self.poly = polynomials_over(self.field)
+        self.poly.clear_cache()
         if pc is not None:
             self.poly_commit = pc
         else:
@@ -429,6 +430,7 @@ class Hbacss1(Hbacss0):
                     mypoly = self.poly.interpolate(known_point_coords)
                     interpolated_points = [mypoly(i+1) for i in range(self.t + 1, self.n)]
                     all_points[l] = known_points + interpolated_points
+                logger.debug("[%d] in between r1", self.my_id)
                 # lines 505-506
                 for j in range(self.n):
                     send(j, (HbAVSSMessageType.RECOVERY1, [ all_points[l][j] for l in range(ls)] , [all_evalproofs[l][j] for l in range(ls)]))
