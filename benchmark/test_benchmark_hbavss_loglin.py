@@ -9,6 +9,7 @@ from honeybadgermpc.poly_commit_dummy import PolyCommitAMTDummy, PolyCommitLogli
 from honeybadgermpc.hbavss import Hbacss0, Hbacss1, Hbacss2, HbAVSSMessageType
 from honeybadgermpc.field import GF
 from honeybadgermpc.utils.misc import print_exception_callback, wrap_send, subscribe_recv
+from honeybadgermpc.router import SimpleRouter
 import asyncio
 from honeybadgermpc.symmetric_crypto import SymmetricCrypto
 import logging
@@ -577,24 +578,21 @@ def test_hbacss0_pcl_max_faulty_shares(benchmark_router, benchmark, batch_multip
     benchmark(_prog)
 
 
-# main function to be used with kernprof
-if __name__ == "__main__":
-    from pypairing import G1, ZR
-    from honeybadgermpc.router import SimpleRouter
-
-
-    def benchmark_router(n):
-        router = SimpleRouter(n)
-        return router.sends, router.recvs, router.broadcasts
-
-
-    loop = asyncio.get_event_loop()
-    t = 10
-    batch_multiple = 2
-    n = 3 * t + 1
-    g, h, pks, sks = get_avss_params_pyp(n, t)
-    values = [ZR.random()] * batch_multiple * (t + 1)
-    crs = [g]
-    params = (t, n, g, h, pks, sks, crs, values)
-    # loop.run_until_complete(hbacss2_pcl_all_correct(benchmark_router, params))
-    loop.run_until_complete(hbacss1_pcl_max_faulty_shares(benchmark_router, params))
+# # main function to be used with kernprof
+# if __name__ == "__main__":
+#     from pypairing import G1, ZR
+#     def benchmark_router(n):
+#         router = SimpleRouter(n)
+#         return router.sends, router.recvs, router.broadcasts
+#
+#
+#     loop = asyncio.get_event_loop()
+#     t = 33
+#     batch_multiple = 11
+#     n = 3 * t + 1
+#     g, h, pks, sks = get_avss_params_pyp(n, t)
+#     values = [ZR.random()] * batch_multiple * (t + 1)
+#     crs = [g]
+#     params = (t, n, g, h, pks, sks, crs, values)
+#     # loop.run_until_complete(hbacss2_pcl_all_correct(benchmark_router, params))
+#     loop.run_until_complete(hbacss1_pcl_max_faulty_shares(benchmark_router, params))
