@@ -126,7 +126,7 @@ def test_benchmark_batch_verify(benchmark, t):
     phis = []
     r = ZR.random()
     cs = []
-    for _ in range(5 *(t + 1)):
+    for _ in range(6 *(t + 1)):
         phi_curr = polynomials_over(ZR).random(t)
         phis.append(phi_curr)
         c_curr = pc.commit(phi_curr, r)
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     phis = []
     r = ZR.random()
     cs = []
-    for _ in range(3 * t + 1):
+    for _ in range(6 * (t + 1)):
         phi_curr = polynomials_over(ZR).random(t)
         phis.append(phi_curr)
         c_curr = pc.commit(phi_curr, r)
