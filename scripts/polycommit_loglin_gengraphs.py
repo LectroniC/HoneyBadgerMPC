@@ -378,6 +378,9 @@ for entry in logbenchmarks:
         hbacss2_tvals_verifybatch.append(str(t))
         hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
 
+# Clear the data
+hbacss2_dummy_pcl_all_correct = []
+hbacss2_dummy_pcl_max_faulty_shares = []
 # Loading the data for hbacss2 with batch size t*(t+1)
 with open("DataWinterfell/Linux-CPython-3.7-64bit/0023_hbavss2_dummy_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
@@ -439,8 +442,7 @@ for i, elem in enumerate(td_points_c0):
     temp_verify_time = hbacss2_verifybatchtimes[index]
     t = elem[1]
     td_per_party_per_proof_mean_c2.append(
-        ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time + temp_verify_time + (
-                    t + 1) * temp_verify_time) / t + td_points_c2[i][0])
+        ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time) / t + td_points_c2[i][0])
     td_n.append(3 * elem[1] + 1)
 
 draw_fixed_multiple_e2e(fixed_multuple, "all correct", "e2e_pcl_all_correct", td_n,
