@@ -6,30 +6,27 @@ import math
 
 def dehumanize_time(timestr):
     if timestr[-3:] == 'mus':
-        return float(timestr[0:-4])/10**6
+        return float(timestr[0:-4]) / 10 ** 6
     if timestr[-2:] == 'ms':
-        return float(timestr[0:-3])/10**3
+        return float(timestr[0:-3]) / 10 ** 3
 
 
 # Larger graph for detailed profiling
 # plt.figure(figsize=(17, 3))
-plt.figure(figsize=(10, 3))
 axis_label_size = 12
 title_size = 12
 color1 = "#e84a27"
 color2 = "#13294b"
+color3 = "#01ff2d"
 tick_fontsize = 12
 
 # Loading
-with open(".benchmarks/Linux-CPython-3.7-64bit/0001_pclog.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0017_pcl_detailed.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 tvals_provebatch = []
 provebatchtimes = []
 provebatchtimes_yerr = []
-
-polytimes = []
-polycountvals_provebatch = []
 
 tvals_verifybatch = []
 verifybatchtimes = []
@@ -38,109 +35,68 @@ for entry in logbenchmarks:
     if entry["name"].startswith("test_benchmark_batch_creation"):
         t = entry["params"]["t"]
         tvals_provebatch.append(str(t))
-        provebatchtimes.append(entry["stats"]["mean"] / ((3*t+1)**2))
-        provebatchtimes_yerr.append(entry["stats"]["stddev"]*2/((3*t+1)**2))
-    if entry["name"].startswith("test_benchmark_prover_dbatch_vary_poly"):
-        polycount = entry["params"]["polycount"]
-        polycountvals_provebatch.append(str(polycount))
-        polytimes.append(entry["stats"]["mean"] / ((3*20+1)*polycount))
+        provebatchtimes.append(entry["stats"]["mean"] / (3 * t + 1) / (6 * (t + 1)))
+        # provebatchtimes_yerr.append(
+        #     (entry["stats"]["stddev"]**2/(3*t+1))**(1/2)*1.960/(entry["stats"]["rounds"]**(1/2)))
     if entry["name"].startswith("test_benchmark_batch_verify"):
         t = entry["params"]["t"]
         tvals_verifybatch.append(str(t))
-        verifybatchtimes.append(entry["stats"]["mean"] / (3*t+1))
-        verifybatchtimes_yerr.append(entry["stats"]["stddev"]*2/(3*t+1))
-
+        verifybatchtimes.append(entry["stats"]["mean"] / (6 * (t + 1)))
+        # verifybatchtimes_yerr.append(
+        #     (entry["stats"]["stddev"]**2/(3*t+1))**(1/2)*1.960/(entry["stats"]["rounds"]**(1/2)))
 
 provebatchtimes = [i * 1000.0 for i in provebatchtimes]
 provebatchtimes_yerr = [i * 1000.0 for i in provebatchtimes_yerr]
 verifybatchtimes = [i * 1000.0 for i in verifybatchtimes]
 verifybatchtimes_yerr = [i * 1000.0 for i in verifybatchtimes_yerr]
-polytimes = [i * 1000.0 for i in polytimes]
 
-hbavss_amt_overhead = []
-hbavss_amt_overhead_yerr = []
-hbavss_polycommitloglin_overhead = []
-hbavss_polycommitloglin_overhead_yerr = []
-tvals_hbavss_amt_benchmark = []
-tvals_hbavss_polycommitloglin_benchmark = []
+# Every entry below will have a dict of {batch_multiple, t, mean, orig_batched_stddev, confidence_yerr}
+hbacss0_dummy_pcl_max_faulty_shares = []
+hbacss0_dummy_pcl_one_faulty_share = []
+hbacss0_dummy_pcl_all_correct = []
+hbacss1_dummy_pcl_max_faulty_shares = []
+hbacss1_dummy_pcl_one_faulty_share = []
+hbacss1_dummy_pcl_all_correct = []
+hbacss2_dummy_pcl_max_faulty_shares = []
+hbacss2_dummy_pcl_one_faulty_share = []
+hbacss2_dummy_pcl_all_correct = []
 
-with open(".benchmarks/Linux-CPython-3.7-64bit/0003_hbavss_pcl.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0018_hbavss_dummy_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 for entry in logbenchmarks:
-    # Batch size is t+1
-    if entry["name"].startswith("test_hbavss_polycommitloglin_end_to_end_time"):
-        t = entry["params"]["t"]
-        hbavss_polycommitloglin_overhead.append(
-            entry["stats"]["mean"] / ((3*t+1)**2))
-        hbavss_polycommitloglin_overhead_yerr.append(
-            entry["stats"]["stddev"]*2 / ((3*t+1)**2))
-        tvals_hbavss_polycommitloglin_benchmark.append(str(t))
+    batch_multiple = entry["params"]["batch_multiple"]
+    t = entry["params"]["t"]
+    mean = entry["stats"]["mean"]
+    per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1))
+    per_party_per_proof_mean *= 1000.0
+    orig_batched_stddev = entry["stats"]["stddev"]
+    confidence_yerr = (entry["stats"]["stddev"] ** 2 / (3 * t + 1)
+                       ) ** (1 / 2) * 1.960 / (entry["stats"]["rounds"] ** (1 / 2))
+    confidence_yerr *= 1000.0
+    dict = {"batch_multiple": batch_multiple, "t": t, "mean": mean,
+            "per_party_per_proof_mean": per_party_per_proof_mean, "orig_batched_stddev": orig_batched_stddev,
+            "confidence_yerr": confidence_yerr}
+    if entry["name"].startswith("test_hbacss0_pcl_all_correct"):
+        hbacss0_dummy_pcl_all_correct.append(dict)
+    if entry["name"].startswith("test_hbacss0_pcl_one_faulty_share"):
+        hbacss0_dummy_pcl_one_faulty_share.append(dict)
+    if entry["name"].startswith("test_hbacss0_pcl_max_faulty_shares"):
+        hbacss0_dummy_pcl_max_faulty_shares.append(dict)
+    if entry["name"].startswith("test_hbacss1_pcl_all_correct"):
+        hbacss1_dummy_pcl_all_correct.append(dict)
+    if entry["name"].startswith("test_hbacss1_pcl_one_faulty_share"):
+        hbacss1_dummy_pcl_one_faulty_share.append(dict)
+    if entry["name"].startswith("test_hbacss1_pcl_max_faulty_shares"):
+        hbacss1_dummy_pcl_max_faulty_shares.append(dict)
+    if entry["name"].startswith("test_hbacss2_pcl_all_correct"):
+        hbacss2_dummy_pcl_all_correct.append(dict)
+    if entry["name"].startswith("test_hbacss2_pcl_one_faulty_share"):
+        hbacss2_dummy_pcl_one_faulty_share.append(dict)
+    if entry["name"].startswith("test_hbacss2_pcl_max_faulty_shares"):
+        hbacss2_dummy_pcl_max_faulty_shares.append(dict)
 
-hbavss_polycommitloglin_overhead = [
-    i * 1000.0 for i in hbavss_polycommitloglin_overhead]
-hbavss_polycommitloglin_overhead_yerr = [
-    i * 1000.0 for i in hbavss_polycommitloglin_overhead_yerr]
-
-with open(".benchmarks/Linux-CPython-3.7-64bit/0002_hbavss_amt.json", "r") as file:
-    logdata = file.read().replace("\n", "")
-logbenchmarks = json.loads(logdata)["benchmarks"]
-for entry in logbenchmarks:
-    # Batch size is t+1
-    if entry["name"].startswith("test_hbavss_amt_end_to_end_time"):
-        t = entry["params"]["t"]
-        hbavss_amt_overhead.append(
-            entry["stats"]["mean"] / ((3*t+1) ** 2))
-        hbavss_amt_overhead_yerr.append(
-            entry["stats"]["stddev"]*2 / ((3*t+1)**2))
-        tvals_hbavss_amt_benchmark.append(str(t))
-
-hbavss_amt_overhead = [i * 1000.0 for i in hbavss_amt_overhead]
-hbavss_amt_overhead_yerr = [i * 1000.0 for i in hbavss_amt_overhead_yerr]
-
-hbavss_pcl_implicate_case_overhead = []
-hbavss_pcl_implicate_case_overhead_yerr = []
-tvals_hbavss_pcl_implicate_case_benchmark = []
-with open(".benchmarks/Linux-CPython-3.7-64bit/0005_hbavss_implicate_pcl.json", "r") as file:
-    logdata = file.read().replace("\n", "")
-logbenchmarks = json.loads(logdata)["benchmarks"]
-for entry in logbenchmarks:
-    # Batch size is t+1
-    if entry["name"].startswith("test_hbavss_end_to_end_time_implicate_case_pcl"):
-        t = entry["params"]["t"]
-        hbavss_pcl_implicate_case_overhead.append(
-            entry["stats"]["mean"] / ((3*t+1) ** 2))
-        hbavss_pcl_implicate_case_overhead_yerr.append(entry["stats"]["stddev"]*2 / ((3*t+1)**2))
-        tvals_hbavss_pcl_implicate_case_benchmark.append(str(t))
-
-
-hbavss_amt_implicate_case_overhead = []
-hbavss_amt_implicate_case_overhead_yerr = []
-tvals_hbavss_amt_implicate_case_benchmark = []
-with open(".benchmarks/Linux-CPython-3.7-64bit/0004_hbavss_implicate_amt.json", "r") as file:
-    logdata = file.read().replace("\n", "")
-logbenchmarks = json.loads(logdata)["benchmarks"]
-for entry in logbenchmarks:
-    # Batch size is t+1
-    if entry["name"].startswith("test_hbavss_end_to_end_time_implicate_case_amt"):
-        t = entry["params"]["t"]
-        hbavss_amt_implicate_case_overhead.append(
-            entry["stats"]["mean"] / ((3*t+1) ** 2))
-        hbavss_amt_implicate_case_overhead_yerr.append(entry["stats"]["stddev"]*2 / ((3*t+1)**2))
-        tvals_hbavss_amt_implicate_case_benchmark.append(str(t))
-
-hbavss_pcl_implicate_case_overhead = [
-    i*1000.0 for i in hbavss_pcl_implicate_case_overhead]
-hbavss_pcl_implicate_case_overhead_yerr = [
-    i*1000.0 for i in hbavss_pcl_implicate_case_overhead_yerr]
-hbavss_amt_implicate_case_overhead = [
-    i*1000.0 for i in hbavss_amt_implicate_case_overhead]
-hbavss_amt_implicate_case_overhead_yerr = [
-    i*1000.0 for i in hbavss_amt_implicate_case_overhead_yerr]
-
-pc_pos = [i for i, _ in enumerate(polycountvals_provebatch)]
-
-with open("amt/vssresults.csv", "r") as file:
+with open("DataWinterfell/amt_benchmarks/vssresults.csv", "r") as file:
     lines = file.readlines()
 entries = []
 for line in lines[1:]:
@@ -171,52 +127,55 @@ for item in header:
         avg_reconstr_bc_usec_stddev_ind = i
     i += 1
 
-# Units are microseconds
-ver_arr = [float(entry[ver_ind]) / (10**3) for entry in entries]
-ver_yerr_arr = [float(entry[ver_stddev_ind])*2 / (10**3) for entry in entries]
+# Units are microseconds, the number of iters is 100.
+ver_arr = [float(entry[ver_ind]) / (10 ** 3) for entry in entries]
+ver_yerr_arr = [float(entry[ver_stddev_ind]) * 1.960 /
+                (100 ** (1 / 2)) / (10 ** 3) for entry in entries]
 
 n_arr = [(entry[n_ind]) for entry in entries]
 
-deal_arr = [float(entry[deal_ind]) / (10**3.0) / int(n_arr[i])
+deal_arr = [float(entry[deal_ind]) / (10 ** 3.0) / int(n_arr[i])
             for i, entry in enumerate(entries)]
-deal_yerr_arr = [float(entry[deal_stddev_ind])*2 / (10**3.0) / int(n_arr[i])
+deal_yerr_arr = [float(entry[deal_stddev_ind]) * 1.960 / (100 ** (1 / 2)) / (10 ** 3.0) / int(n_arr[i])
                  for i, entry in enumerate(entries)]
 amt_reconstr_wc_arr = [
-    float(entry[amt_reconstr_wc_usec]) / (10**3) for entry in entries]
+    float(entry[amt_reconstr_wc_usec]) / (10 ** 3) for entry in entries]
 amt_reconstr_bc_arr = [
-    float(entry[avg_reconstr_bc_usec]) / (10**3) for entry in entries]
+    float(entry[avg_reconstr_bc_usec]) / (10 ** 3) for entry in entries]
 
-plotting_ver_arr = []
-plotting_n_arr = []
-plotting_reconstr_wc_arr = []
-plotting_reconstr_bc_arr = []
-plotting_ver_yerr_arr = []
+# plotting_reconstr_wc_arr = []
+# plotting_reconstr_bc_arr = []
+# plotting_ver_yerr_arr = []
+amt_plotting_ver_arr = []
+amt_plotting_n_arr = []
 for elem in tvals_verifybatch:
-    index = n_arr.index(str(int(elem)*3+1))
-    plotting_ver_arr.append(ver_arr[index])
-    plotting_n_arr.append(n_arr[index])
-    plotting_ver_yerr_arr.append(ver_yerr_arr[index])
-    plotting_reconstr_wc_arr.append(amt_reconstr_wc_arr[index])
-    plotting_reconstr_bc_arr.append(amt_reconstr_bc_arr[index])
+    index = n_arr.index(str(int(elem) * 3 + 1))
+    amt_plotting_ver_arr.append(ver_arr[index])
+    amt_plotting_n_arr.append(n_arr[index])
+    # plotting_ver_yerr_arr.append(ver_yerr_arr[index])
+    # plotting_reconstr_wc_arr.append(amt_reconstr_wc_arr[index])
+    # plotting_reconstr_bc_arr.append(amt_reconstr_bc_arr[index])
 
 n_vals = [str(3 * int(t) + 1) for t in tvals_provebatch]
 n_pos = [i for i, _ in enumerate(n_vals)]
 
+# ----------------------------------------------------------------------
+# PCL Verification
+plt.figure(figsize=(10, 3))
 plt.clf()
-plt.plot(verifybatchtimes, linestyle='-', marker='o',
+plt.plot(verifybatchtimes[::2], linestyle='-', marker='o',
          color=color1, label="PolyCommitHB")
-plt.plot(plotting_ver_arr, linestyle='-', marker='o',
+plt.plot(amt_plotting_ver_arr[::2], linestyle='-', marker='o',
          color=color2, label="AMT PC")
-
-plt.errorbar(plotting_n_arr, verifybatchtimes,
-             yerr=verifybatchtimes_yerr, fmt='none')
-plt.errorbar(plotting_n_arr, plotting_ver_arr,
-             yerr=plotting_ver_yerr_arr, fmt='none')
+# plt.errorbar(amt_plotting_n_arr, verifybatchtimes,
+#              yerr=verifybatchtimes_yerr, fmt='none')
+# plt.errorbar(amt_plotting_n_arr, amt_plotting_ver_arr,
+#              yerr=plotting_ver_yerr_arr, fmt='none')
 plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
 plt.ylabel("Amortized verify time per proof (ms)", fontsize=axis_label_size)
 plt.title("PolyCommitHB vs AMT PC Verification Performance",
           fontsize=title_size)
-plt.xticks(n_pos, plotting_n_arr)
+plt.xticks(n_pos[:len(amt_plotting_n_arr[::2])], amt_plotting_n_arr[::2])
 plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
@@ -224,28 +183,30 @@ plt.ylim(0)
 plt.savefig("gen_graphs/pcl_vs_amt_verification.png", bbox_inches='tight')
 plt.savefig("gen_graphs/pcl_vs_amt_verification.pdf", bbox_inches='tight')
 
+# -----------------------------------------------------------------------------------------------
+# PCL proof generation
+plt.figure(figsize=(10, 3))
 plotting_deal_arr = []
 plotting_deal_yerr_arr = []
 for elem in tvals_provebatch:
-    index = n_arr.index(str(int(elem)*3+1))
+    index = n_arr.index(str(int(elem) * 3 + 1))
     plotting_deal_arr.append(deal_arr[index])
     plotting_deal_yerr_arr.append(deal_yerr_arr[index])
 
 plt.clf()
-plt.plot(provebatchtimes, linestyle='-', marker='o',
+plt.plot(provebatchtimes[::2], linestyle='-', marker='o',
          color=color1, label="PolyCommitHB")
-plt.plot(plotting_deal_arr, linestyle='-', marker='o',
+plt.plot(plotting_deal_arr[::2], linestyle='-', marker='o',
          color=color2, label="AMT PC")
-
-plt.errorbar(plotting_n_arr, provebatchtimes,
-             yerr=provebatchtimes_yerr, fmt='none')
-plt.errorbar(plotting_n_arr, plotting_deal_arr,
-             yerr=plotting_deal_yerr_arr, fmt='none')
+# plt.errorbar(amt_plotting_n_arr, provebatchtimes,
+#              yerr=provebatchtimes_yerr, fmt='none')
+# plt.errorbar(amt_plotting_n_arr, plotting_deal_arr,
+#              yerr=plotting_deal_yerr_arr, fmt='none')
 plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
 plt.ylabel("Amortized generation time per proof (ms)",
            fontsize=axis_label_size)
 plt.title("PolyCommitHB vs AMT PC Proof Generation", fontsize=title_size)
-plt.xticks(n_pos, plotting_n_arr)
+plt.xticks(n_pos[:len(amt_plotting_n_arr[::2])], amt_plotting_n_arr[::2])
 plt.legend(loc="best")
 plt.xticks(fontsize=tick_fontsize)
 plt.yticks(fontsize=tick_fontsize)
@@ -253,144 +214,286 @@ plt.ylim(0)
 plt.savefig("gen_graphs/pcl_vs_amt_prove_generation.png", bbox_inches='tight')
 plt.savefig("gen_graphs/pcl_vs_amt_prove_generation.pdf", bbox_inches='tight')
 
-plt.figure(figsize=(10, 3))
+# -------------------------------------------------------------------------------------
 
-plt.clf()
-n_vals = [str(3 * int(t) + 1) for t in tvals_hbavss_amt_benchmark]
-n_pos = [i for i, _ in enumerate(n_vals)]
-#pcl_pos = [i - width / 2 for i in n_pos]
-#amt_pos = [i + width / 2 for i in n_pos]
-# plt.bar(pcl_pos, hbavss_polycommitloglin_overhead,
-#         width, label="pcl proof size + hbavss")
-# plt.bar(amt_pos, hbavss_amt_overhead, width, label="amt proof size + hbavss")
-plt.xlabel("Total players (n=3t+1)")
-plt.ylabel("Amortized end-to-end time (ms)")
-plt.title("Size-match fake proofs for HbAVSS end-to-end time")
-plt.xticks(n_pos, n_vals)
-# plt.legend(loc="best")
-plt.ylim(0)
+# Fixed multiple
+
+fixed_multuple = 6
+t_extracted = [1, 2, 5, 10, 22, 42]
 
 
-plt.clf()
-n_vals = [str(3 * int(t) + 1) for t in tvals_hbavss_amt_benchmark]
-n_pos = [i for i, _ in enumerate(n_vals)]
+def draw_fixed_multiple(fixed_multuple, scenario_name, file_name,
+                        td_t_c0, td_per_party_per_proof_mean_c0,
+                        td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2):
+    plt.clf()
+    plt.figure(figsize=(8, 3))
+    n_vals = [str(3 * i + 1) for i in td_t_c0]
+    t_pos = [i for i, _ in enumerate(n_vals)]
 
-hbavss_pcl_only_related_cost = []
-hbavss_amt_only_related_cost = []
-hbavss_pcl_sum_cost = []
-hbavss_amt_sum_cost = []
-for i, t in enumerate(tvals_hbavss_amt_implicate_case_benchmark):
-    hbavss_pcl_only_related_cost.append(
-        provebatchtimes[i] +
-        verifybatchtimes[i] + (int(t)+1)*verifybatchtimes[i])
-    hbavss_amt_only_related_cost.append(
-        plotting_deal_arr[i] +
-        plotting_ver_arr[i] + (int(t)+1)*plotting_ver_arr[i])
-    hbavss_pcl_sum_cost.append(
-        hbavss_pcl_only_related_cost[-1]+hbavss_pcl_implicate_case_overhead[i])
-    hbavss_amt_sum_cost.append(
-        hbavss_amt_only_related_cost[-1]+hbavss_amt_implicate_case_overhead[i])
+    plt.plot(td_per_party_per_proof_mean_c0, linestyle='-', marker='o',
+             color=color1, label="HbACSS0")
+    plt.plot(td_per_party_per_proof_mean_c1, linestyle='-', marker='o',
+             color=color2, label="HbACSS1")
+    plt.plot(td_per_party_per_proof_mean_c2, linestyle='-', marker='o',
+             color=color3, label="HbACSS2")
 
-# plt.plot(hbavss_pcl_only_related_cost,  linestyle='-', marker='v',
-#          color=color1, label="PolyCommitHB related costs")
-plt.plot(hbavss_pcl_implicate_case_overhead,  linestyle='--', marker='^',
-         color=color1, label="PolyCommitHB + hbAVSS protocol costs")
-plt.plot(hbavss_pcl_sum_cost, linestyle='-', marker='o',
-         color=color1, label="PolyCommitHB + hbAVSS total costs")
-# plt.plot(hbavss_amt_only_related_cost,  linestyle='-', marker='v',
-#          color=color2, label="AMT PC related costs")
-plt.plot(hbavss_amt_implicate_case_overhead,  linestyle='--', marker='^',
-         color=color2, label="AMT PC + hbAVSS protocol costs")
-plt.plot(hbavss_amt_sum_cost, linestyle='-', marker='o',
-         color=color2, label="AMT PC + hbAVSS total costs")
+    plt.xlabel("n", fontsize=axis_label_size)
+    plt.ylabel("Amortized time per party per value shared (ms)",
+               fontsize=axis_label_size)
+    plt.title("Amortized baseline costs when batch_size=6*(t+1) under " + scenario_name,
+              fontsize=title_size)
+    plt.xticks(t_pos, n_vals)
+    plt.legend(loc="best")
+    plt.xticks(fontsize=tick_fontsize)
+    plt.yticks(fontsize=tick_fontsize)
+    plt.ylim(0)
+    plt.savefig("gen_graphs/" + file_name + ".png",
+                bbox_inches='tight')
+    plt.savefig("gen_graphs/" + file_name + ".pdf",
+                bbox_inches='tight')
 
-plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
-plt.ylabel("Amortized end-to-end time per value shared(ms)",
-           fontsize=axis_label_size)
-plt.title("PolyCommitHB and AMT PC Instantiating hbAVSS t-implicate Runtime",
-          fontsize=title_size)
-plt.xticks(n_pos, n_vals)
-plt.legend(loc="best")
-plt.xticks(fontsize=tick_fontsize)
-plt.yticks(fontsize=tick_fontsize)
-plt.ylim(0)
-plt.savefig("gen_graphs/hbavss_e2e_including_reconstruction.png",
-            bbox_inches='tight')
-plt.savefig("gen_graphs/hbavss_e2e_including_reconstruction.pdf",
-            bbox_inches='tight')
 
-# No implicate breakdown:
-# Deadling + Verification Time only
-plt.clf()
-n_vals = [str(3 * int(t) + 1) for t in tvals_hbavss_amt_benchmark]
-n_pos = [i for i, _ in enumerate(n_vals)]
+td_points_c0 = []
+td_points_c1 = []
+td_points_c2 = []
 
-non_faulty_hbavss_polycommitloglin_e2e = []
-non_faulty_hbavss_amt_e2e = []
-for i, _ in enumerate(n_vals):
-    pcl_e2e = provebatchtimes[i] + verifybatchtimes[i] + \
-        hbavss_polycommitloglin_overhead[i]
-    amt_e2e = plotting_deal_arr[i] + \
-        plotting_ver_arr[i] + hbavss_amt_overhead[i]
-    non_faulty_hbavss_polycommitloglin_e2e.append(pcl_e2e)
-    non_faulty_hbavss_amt_e2e.append(amt_e2e)
+for i in hbacss0_dummy_pcl_max_faulty_shares:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c0.append(
+            (i['per_party_per_proof_mean'], i['t']))
 
-plt.plot(hbavss_polycommitloglin_overhead,  linestyle='--', marker='^',
-         color=color1, label="PolyCommitHB + hbAVSS protocol costs")
-plt.plot(non_faulty_hbavss_polycommitloglin_e2e, linestyle='-', marker='o',
-         color=color1, label="PolyCommitHB + hbAVSS total costs")
+for i in hbacss1_dummy_pcl_max_faulty_shares:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c1.append(
+            (i['per_party_per_proof_mean'], i['t']))
 
-plt.plot(hbavss_amt_overhead,  linestyle='--', marker='^',
-         color=color2, label="AMT PC + hbAVSS protocol costs")
-plt.plot(non_faulty_hbavss_amt_e2e, linestyle='-', marker='o',
-         color=color2, label="AMT PC + hbAVSS total costs")
+for i in hbacss2_dummy_pcl_max_faulty_shares:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c2.append(
+            (i['per_party_per_proof_mean'], i['t']))
 
-plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
-plt.ylabel("Amortized time per value shared(ms)",
-           fontsize=axis_label_size)
-plt.title("PolyCommitHB and AMT PC Instantiating hbAVSS Non-Faulty (No implicate) Runtime",
-          fontsize=title_size)
-plt.xticks(n_pos, n_vals)
-plt.legend(loc="best")
-plt.xticks(fontsize=tick_fontsize)
-plt.yticks(fontsize=tick_fontsize)
-plt.ylim(0)
-plt.savefig("gen_graphs/hbavss_e2e_non_faulty.png", bbox_inches='tight')
-plt.savefig("gen_graphs/hbavss_e2e_non_faulty.pdf", bbox_inches='tight')
+# Sorting
+td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
+td_points_c1 = sorted(td_points_c1, key=lambda x: x[1])
+td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
 
-# Protocol cost comparison:
-plt.clf()
+td_per_party_per_proof_mean_c0 = [i[0] for i in td_points_c0]
+td_t_c0 = [i[1] for i in td_points_c0]
+td_per_party_per_proof_mean_c1 = [i[0] for i in td_points_c1]
+td_t_c1 = [i[1] for i in td_points_c1]
+td_per_party_per_proof_mean_c2 = [i[0] for i in td_points_c2]
+td_t_c2 = [i[1] for i in td_points_c2]
 
-plt.errorbar(n_vals, hbavss_polycommitloglin_overhead,
-             yerr=hbavss_polycommitloglin_overhead_yerr, fmt='none')
-plt.errorbar(n_vals, hbavss_pcl_implicate_case_overhead,
-             yerr=hbavss_pcl_implicate_case_overhead_yerr, fmt='none')
-plt.errorbar(n_vals, hbavss_amt_overhead,
-             yerr=hbavss_amt_overhead_yerr, fmt='none')
-plt.errorbar(n_vals, hbavss_amt_implicate_case_overhead,
-             yerr=hbavss_amt_implicate_case_overhead_yerr, fmt='none')
+draw_fixed_multiple(fixed_multuple, "max faulty shares", "fix_multiple_pcl_max_faulty_shares", td_t_c0,
+                    td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
 
-plt.plot(hbavss_polycommitloglin_overhead,  linestyle='--', marker='^',
-         color=color1, label="PolyCommitHB + hbAVSS protocol costs (No implicate)")
-plt.plot(hbavss_pcl_implicate_case_overhead, linestyle='-', marker='o',
-         color=color1, label="PolyCommitHB + hbAVSS protocol costs (t implicate)")
+td_points_c0 = []
+td_points_c1 = []
+td_points_c2 = []
 
-plt.plot(hbavss_amt_overhead,  linestyle='--', marker='^',
-         color=color2, label="AMT PC + hbAVSS protocol costs (No implicate)")
-plt.plot(hbavss_amt_implicate_case_overhead, linestyle='-', marker='o',
-         color=color2, label="AMT PC + hbAVSS protocol costs (t implicate)")
+for i in hbacss0_dummy_pcl_all_correct:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c0.append(
+            (i['per_party_per_proof_mean'], i['t']))
 
-plt.xlabel("Total players (n=3t+1)", fontsize=axis_label_size)
-plt.ylabel("Amortized time per value shared(ms)",
-           fontsize=axis_label_size)
-plt.title("PolyCommitHB and AMT PC Instantiating hbAVSS Protocol Costs",
-          fontsize=title_size)
-plt.xticks(n_pos, n_vals)
-plt.legend(loc="best")
-plt.xticks(fontsize=tick_fontsize)
-plt.yticks(fontsize=tick_fontsize)
-plt.ylim(0)
-plt.savefig("gen_graphs/hbavss_e2e_overhead_comparsion.png",
-            bbox_inches='tight')
-plt.savefig("gen_graphs/hbavss_e2e_overhead_comparsion.pdf",
-            bbox_inches='tight')
+for i in hbacss1_dummy_pcl_all_correct:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c1.append(
+            (i['per_party_per_proof_mean'], i['t']))
+
+for i in hbacss2_dummy_pcl_all_correct:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c2.append(
+            (i['per_party_per_proof_mean'], i['t']))
+
+# Sorting
+td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
+td_points_c1 = sorted(td_points_c1, key=lambda x: x[1])
+td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
+
+td_per_party_per_proof_mean_c0 = [i[0] for i in td_points_c0]
+td_t_c0 = [i[1] for i in td_points_c0]
+td_per_party_per_proof_mean_c1 = [i[0] for i in td_points_c1]
+td_t_c1 = [i[1] for i in td_points_c1]
+td_per_party_per_proof_mean_c2 = [i[0] for i in td_points_c2]
+td_t_c2 = [i[1] for i in td_points_c2]
+
+draw_fixed_multiple(fixed_multuple, "all correct", "fix_multiple_pcl_all_correct", td_t_c0,
+                    td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
+
+# -------------------------------------------------------------------------------------
+
+# Extrapolated e2e time.
+
+fixed_multiple = 6
+t_extracted = [1, 2, 5, 10, 22, 42]
+
+
+def draw_fixed_multiple_e2e(fixed_multuple, scenario_name, file_name,
+                            td_n_c0, td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1,
+                            td_per_party_per_proof_mean_c2):
+    plt.clf()
+    plt.figure(figsize=(8, 3))
+    n_vals = [str(i) for i in td_n_c0]
+    t_pos = [i for i, _ in enumerate(n_vals)]
+
+    plt.plot(td_per_party_per_proof_mean_c0, linestyle='-', marker='o',
+             color=color1, label="HbACSS0+PolycommitHB")
+    plt.plot(td_per_party_per_proof_mean_c1, linestyle='-', marker='o',
+             color=color2, label="HbACSS0+AMT")
+    plt.plot(td_per_party_per_proof_mean_c2, linestyle='-', marker='o',
+             color=color3, label="HbACSS2+PolycommitHB")
+
+    plt.xlabel("n", fontsize=axis_label_size)
+    plt.ylabel("Amortized time per party per value shared (ms)",
+               fontsize=axis_label_size)
+    plt.title("Estimated end-to-end time per value shared under " + scenario_name,
+              fontsize=title_size)
+    plt.xticks(t_pos, n_vals)
+    plt.legend(loc="best")
+    plt.xticks(fontsize=tick_fontsize)
+    plt.yticks(fontsize=tick_fontsize)
+    plt.ylim(0)
+    plt.savefig("gen_graphs/" + file_name + ".png",
+                bbox_inches='tight')
+    plt.savefig("gen_graphs/" + file_name + ".pdf",
+                bbox_inches='tight')
+
+
+# Loading the data for batch size specific to hbacss2
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0022_hbavss2_only_pcl.json", "r") as file:
+    logdata = file.read().replace("\n", "")
+logbenchmarks = json.loads(logdata)["benchmarks"]
+hbacss2_tvals_provebatch = []
+hbacss2_provebatchtimes = []
+hbacss2_tvals_verifybatch = []
+hbacss2_verifybatchtimes = []
+for entry in logbenchmarks:
+    if entry["name"].startswith("test_hbacss2_size_benchmark_batch_creation"):
+        t = entry["params"]["t"]
+        hbacss2_tvals_provebatch.append(str(t))
+        hbacss2_provebatchtimes.append(entry["stats"]["mean"] / (3 * t + 1) / t)
+    if entry["name"].startswith("test_hbacss2_size_benchmark_batch_verify"):
+        t = entry["params"]["t"]
+        hbacss2_tvals_verifybatch.append(str(t))
+        hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
+
+# Clear the data
+hbacss2_dummy_pcl_all_correct = []
+hbacss2_dummy_pcl_max_faulty_shares = []
+# Loading the data for hbacss2 with batch size t*(t+1)
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0023_hbavss2_dummy_pcl.json", "r") as file:
+    logdata = file.read().replace("\n", "")
+logbenchmarks = json.loads(logdata)["benchmarks"]
+for entry in logbenchmarks:
+    t = entry["params"]["t"]
+    mean = entry["stats"]["mean"]
+    per_party_per_proof_mean = mean / ((3 * t + 1) * t * (t + 1))
+    per_party_per_proof_mean *= 1000.0
+    orig_batched_stddev = entry["stats"]["stddev"]
+    dict = {"t": t, "mean": mean,
+            "per_party_per_proof_mean": per_party_per_proof_mean, "orig_batched_stddev": orig_batched_stddev}
+    if entry["name"].startswith("test_hbacss2_pcl_all_correct"):
+        hbacss2_dummy_pcl_all_correct.append(dict)
+    if entry["name"].startswith("test_hbacss2_pcl_max_faulty_shares"):
+        hbacss2_dummy_pcl_max_faulty_shares.append(dict)
+
+hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
+hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
+print(hbacss2_provebatchtimes)
+print(hbacss2_verifybatchtimes)
+
+td_points_c0 = []
+td_points_c2 = []
+
+for i in hbacss0_dummy_pcl_all_correct:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c0.append(
+            (i['per_party_per_proof_mean'], i['t']))
+
+for i in hbacss2_dummy_pcl_all_correct:
+    if i['t'] in t_extracted:
+        td_points_c2.append(
+            (i['per_party_per_proof_mean'], i['t']))
+
+# Sorting
+td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
+td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
+
+td_per_party_per_proof_mean_c0 = []
+td_per_party_per_proof_mean_c1 = []
+td_per_party_per_proof_mean_c2 = []
+td_n = []
+
+for i, elem in enumerate(td_points_c0):
+    # Calculating hbacss0 + polycommithb
+    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    td_per_party_per_proof_mean_c0.append(
+        provebatchtimes[index] + verifybatchtimes[index] + td_points_c0[i][0])
+
+    # Calculating hbacss0 + amt
+    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    td_per_party_per_proof_mean_c1.append(td_points_c0[i][0] + plotting_deal_arr[index] + amt_plotting_ver_arr[index])
+
+    # Calculating hbacss2 + polycommithb
+    index = hbacss2_tvals_provebatch.index(str(elem[1]))
+    temp_prove_time = hbacss2_provebatchtimes[index]
+    index = hbacss2_tvals_verifybatch.index(str(elem[1]))
+    temp_verify_time = hbacss2_verifybatchtimes[index]
+    t = elem[1]
+    td_per_party_per_proof_mean_c2.append(
+        ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time) / t + td_points_c2[i][0])
+    td_n.append(3 * elem[1] + 1)
+
+draw_fixed_multiple_e2e(fixed_multuple, "all correct", "e2e_pcl_all_correct", td_n,
+                        td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
+
+td_points_c0 = []
+td_points_c2 = []
+
+for i in hbacss0_dummy_pcl_all_correct:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c0.append(
+            (i['per_party_per_proof_mean'], i['t']))
+
+for i in hbacss2_dummy_pcl_all_correct:
+    if i['t'] in t_extracted:
+        td_points_c2.append(
+            (i['per_party_per_proof_mean'], i['t']))
+
+# Sorting
+td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
+td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
+
+td_per_party_per_proof_mean_c0 = []
+td_per_party_per_proof_mean_c1 = []
+td_per_party_per_proof_mean_c2 = []
+td_n = []
+
+for i, elem in enumerate(td_points_c0):
+    # Calculating hbacss0 + polycommithb
+    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    td_per_party_per_proof_mean_c0.append(
+        provebatchtimes[index] + verifybatchtimes[index] + elem[1] * verifybatchtimes[index] + td_points_c0[i][0])
+
+    # Calculating hbacss0 + amt
+    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    td_per_party_per_proof_mean_c1.append(
+        td_points_c0[i][0] + plotting_deal_arr[index] + amt_plotting_ver_arr[index] + elem[1] * amt_plotting_ver_arr[
+            index])
+
+    # Calculating hbacss2 + polycommithb
+    index = hbacss2_tvals_provebatch.index(str(elem[1]))
+    temp_prove_time = hbacss2_provebatchtimes[index]
+    index = hbacss2_tvals_verifybatch.index(str(elem[1]))
+    temp_verify_time = hbacss2_verifybatchtimes[index]
+    t = elem[1]
+    td_per_party_per_proof_mean_c2.append(
+        ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time + temp_verify_time + (
+                    t + 1) * temp_verify_time) / t + td_points_c2[i][0])
+    td_n.append(3 * elem[1] + 1)
+
+draw_fixed_multiple_e2e(fixed_multuple, "max faulty shares", "e2e_pcl_max_faulty_shares", td_n,
+                        td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
+
+# -----------------------

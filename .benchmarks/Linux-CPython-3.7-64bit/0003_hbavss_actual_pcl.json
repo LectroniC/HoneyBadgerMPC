@@ -1,0 +1,110 @@
+{
+    "machine_info": {
+        "node": "f6f4cfb7f6e6",
+        "processor": "",
+        "machine": "x86_64",
+        "python_compiler": "GCC 6.3.0 20170516",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.7.3",
+        "python_version": "3.7.3",
+        "python_build": [
+            "default",
+            "Jun 11 2019 01:11:15"
+        ],
+        "release": "4.19.76-linuxkit",
+        "system": "Linux",
+        "cpu": {
+            "vendor_id": "unknown",
+            "hardware": "unknown",
+            "brand": "unknown"
+        }
+    },
+    "commit_info": {
+        "id": "unversioned",
+        "time": null,
+        "author_time": null,
+        "dirty": false,
+        "project": "HoneyBadgerMPC",
+        "branch": "(unknown)"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_hbacss0_actual_pcl_all_correct[6-1]",
+            "fullname": "benchmark/test_benchmark_hbavss_actual_loglin.py::test_hbacss0_actual_pcl_all_correct[6-1]",
+            "params": {
+                "batch_multiple": 6,
+                "t": 1
+            },
+            "param": "6-1",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 3,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.2277550019789487,
+                "max": 0.2316666019614786,
+                "mean": 0.23015165198012255,
+                "stddev": 0.0016865556722776658,
+                "rounds": 4,
+                "median": 0.23059250199003145,
+                "iqr": 0.0021856999373994768,
+                "q1": 0.2290588020114228,
+                "q3": 0.2312445019488223,
+                "iqr_outliers": 0,
+                "stddev_outliers": 1,
+                "outliers": "1;0",
+                "ld15iqr": 0.2277550019789487,
+                "hd15iqr": 0.2316666019614786,
+                "ops": 4.344961208822289,
+                "total": 0.9206066079204902,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_hbacss0_actual_pcl_all_correct[6-2]",
+            "fullname": "benchmark/test_benchmark_hbavss_actual_loglin.py::test_hbacss0_actual_pcl_all_correct[6-2]",
+            "params": {
+                "batch_multiple": 6,
+                "t": 2
+            },
+            "param": "6-2",
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 3,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.6035741049563512,
+                "max": 0.6082813049433753,
+                "mean": 0.6059277049498633,
+                "stddev": 0.0033284930312259477,
+                "rounds": 2,
+                "median": 0.6059277049498633,
+                "iqr": 0.004707199987024069,
+                "q1": 0.6035741049563512,
+                "q3": 0.6082813049433753,
+                "iqr_outliers": 0,
+                "stddev_outliers": 0,
+                "outliers": "0;0",
+                "ld15iqr": 0.6035741049563512,
+                "hd15iqr": 0.6082813049433753,
+                "ops": 1.6503619026344798,
+                "total": 1.2118554098997265,
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2020-08-31T05:23:53.661593",
+    "version": "3.2.3"
+}

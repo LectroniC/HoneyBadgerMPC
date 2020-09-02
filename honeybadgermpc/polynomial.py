@@ -100,6 +100,10 @@ def polynomials_over(field):
         _lagrange_cache = {}  # Cache lagrange polynomials
 
         @classmethod
+        def clear_cache(cls):
+            cls._lagrange_cache.clear()
+
+        @classmethod
         def interpolate(cls, shares):
             x = cls([field(0), field(1)])  # This is the polynomial f(x) = x
             one = cls([field(1)])  # This is the polynomial f(x) = 1
