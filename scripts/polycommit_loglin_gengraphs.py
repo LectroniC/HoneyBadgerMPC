@@ -359,7 +359,7 @@ def draw_fixed_multiple_e2e(fixed_multuple, scenario_name, file_name,
     plt.savefig("gen_graphs/" + file_name + ".pdf",
                 bbox_inches='tight')
 
-
+'''
 # Loading the data for batch size specific to hbacss2
 with open("DataWinterfell/Linux-CPython-3.7-64bit/0022_hbavss2_only_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
@@ -377,7 +377,9 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbacss2_tvals_verifybatch.append(str(t))
         hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
+'''
 
+'''
 # Clear the data
 hbacss2_dummy_pcl_all_correct = []
 hbacss2_dummy_pcl_max_faulty_shares = []
@@ -402,23 +404,23 @@ hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
 hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
 print(hbacss2_provebatchtimes)
 print(hbacss2_verifybatchtimes)
+'''
 
+'''
 td_points_c0 = []
 td_points_c2 = []
-
 for i in hbacss0_dummy_pcl_all_correct:
     if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
         td_points_c0.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 for i in hbacss2_dummy_pcl_all_correct:
     if i['t'] in t_extracted:
         td_points_c2.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 # Sorting
 td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
+'''
 
 td_per_party_per_proof_mean_c0 = []
 td_per_party_per_proof_mean_c1 = []
@@ -427,43 +429,45 @@ td_n = []
 
 for i, elem in enumerate(td_points_c0):
     # Calculating hbacss0 + polycommithb
-    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    t = elem[1]
+    n = 3 * t  + 1
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c0.append(
         provebatchtimes[index] + verifybatchtimes[index] + td_points_c0[i][0])
 
     # Calculating hbacss0 + amt
-    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c1.append(td_points_c0[i][0] + plotting_deal_arr[index] + amt_plotting_ver_arr[index])
 
     # Calculating hbacss2 + polycommithb
-    index = hbacss2_tvals_provebatch.index(str(elem[1]))
+    '''
+    index = hbacss2_tvals_provebatch.index(str(t))
     temp_prove_time = hbacss2_provebatchtimes[index]
-    index = hbacss2_tvals_verifybatch.index(str(elem[1]))
     temp_verify_time = hbacss2_verifybatchtimes[index]
-    t = elem[1]
-    td_per_party_per_proof_mean_c2.append(
-        ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time) / t + td_points_c2[i][0])
-    td_n.append(3 * elem[1] + 1)
+    '''
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
+    redundancy_overhead = n / (t+1)
+    td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index])*redundancy_overhead + td_points_c2[i][0])
+    td_n.append(3 * t + 1)
 
 draw_fixed_multiple_e2e(fixed_multuple, "all correct", "e2e_pcl_all_correct", td_n,
                         td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
 
+'''
 td_points_c0 = []
 td_points_c2 = []
-
-for i in hbacss0_dummy_pcl_all_correct:
+for i in hbacss0_dummy_pcl_max_faulty_shares:
     if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
         td_points_c0.append(
             (i['per_party_per_proof_mean'], i['t']))
-
-for i in hbacss2_dummy_pcl_all_correct:
+for i in hbacss2_dummy_pcl_max_faulty_shares:
     if i['t'] in t_extracted:
         td_points_c2.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 # Sorting
 td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
+'''
 
 td_per_party_per_proof_mean_c0 = []
 td_per_party_per_proof_mean_c1 = []
@@ -471,27 +475,28 @@ td_per_party_per_proof_mean_c2 = []
 td_n = []
 
 for i, elem in enumerate(td_points_c0):
+    t = elem[1]
+    n = 3*t+1
     # Calculating hbacss0 + polycommithb
-    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c0.append(
-        provebatchtimes[index] + verifybatchtimes[index] + elem[1] * verifybatchtimes[index] + td_points_c0[i][0])
+        provebatchtimes[index] + verifybatchtimes[index] + (t+1) * (t/n) * verifybatchtimes[index] + td_points_c0[i][0])
 
     # Calculating hbacss0 + amt
-    index = amt_plotting_n_arr.index(str(3 * elem[1] + 1))
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c1.append(
-        td_points_c0[i][0] + plotting_deal_arr[index] + amt_plotting_ver_arr[index] + elem[1] * amt_plotting_ver_arr[
-            index])
+        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + (t+1) * (t/n) * amt_plotting_ver_arr[index] + td_points_c0[i][0])
 
     # Calculating hbacss2 + polycommithb
-    index = hbacss2_tvals_provebatch.index(str(elem[1]))
+    '''
+    index = hbacss2_tvals_provebatch.index(str(t))
     temp_prove_time = hbacss2_provebatchtimes[index]
-    index = hbacss2_tvals_verifybatch.index(str(elem[1]))
     temp_verify_time = hbacss2_verifybatchtimes[index]
-    t = elem[1]
-    td_per_party_per_proof_mean_c2.append(
-        ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time + temp_verify_time + (
-                    t + 1) * temp_verify_time) / t + td_points_c2[i][0])
-    td_n.append(3 * elem[1] + 1)
+    '''
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
+    redundancy_overhead = n / (t+1)
+    td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index] + ((t+2)/n)*verifybatchtimes[index])*redundancy_overhead + td_points_c2[i][0])
+    td_n.append(3 * t + 1)
 
 draw_fixed_multiple_e2e(fixed_multuple, "max faulty shares", "e2e_pcl_max_faulty_shares", td_n,
                         td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
