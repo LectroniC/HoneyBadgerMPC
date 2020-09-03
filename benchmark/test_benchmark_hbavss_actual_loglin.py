@@ -71,13 +71,12 @@ class Hbacss2_always_send_and_accept_implicates(Hbacss2_always_accept_implicates
         return False
 
 
-async def hbacss0_actual_pcl_all_correct(benchmark_router, params):
+async def hbacss0_actual_pcl_all_correct(benchmark_router, params, pcl):
     (t, n, g, h, pks, sks, crs, values) = params
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
-    pcl = PolyCommitLog(degree_max=t)
-    pcl.preprocess_verifier(16)
+
     with ExitStack() as stack:
         hbavss_list = [None] * n
         for i in range(n):
@@ -110,21 +109,21 @@ def test_hbacss0_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
     values = [ZR.random()] * batch_multiple * (t + 1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
+    pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     def _prog():
-        loop.run_until_complete(hbacss0_actual_pcl_all_correct(benchmark_router, params))
+        loop.run_until_complete(hbacss0_actual_pcl_all_correct(benchmark_router, params, pcl))
 
     benchmark(_prog)
 
 
-async def hbacss0_actual_pcl_max_faulty_shares(benchmark_router, params):
+async def hbacss0_actual_pcl_max_faulty_shares(benchmark_router, params, pcl):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_is = [i for i in range(t, t + t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
-    pcl = PolyCommitLog(degree_max=t)
-    pcl.preprocess_verifier(16)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -166,20 +165,20 @@ def test_hbacss0_actual_pcl_max_faulty_shares(benchmark_router, benchmark, batch
     values = [ZR.random()] * batch_multiple * (t + 1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
+    pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     def _prog():
-        loop.run_until_complete(hbacss0_actual_pcl_max_faulty_shares(benchmark_router, params))
+        loop.run_until_complete(hbacss0_actual_pcl_max_faulty_shares(benchmark_router, params, pcl))
 
     benchmark(_prog)
 
 
-async def hbacss2_actual_pcl_all_correct(benchmark_router, params):
+async def hbacss2_actual_pcl_all_correct(benchmark_router, params, pcl):
     (t, n, g, h, pks, sks, crs, values) = params
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
-    pcl = PolyCommitLog(degree_max=t)
-    pcl.preprocess_verifier(16)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -212,21 +211,21 @@ def test_hbacss2_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
     values = [ZR.random()] * batch_multiple * (t + 1) * (t + 1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
+    pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     def _prog():
-        loop.run_until_complete(hbacss2_actual_pcl_all_correct(benchmark_router, params))
+        loop.run_until_complete(hbacss2_actual_pcl_all_correct(benchmark_router, params, pcl))
 
     benchmark(_prog)
 
 
-async def hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params):
+async def hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params, pcl):
     (t, n, g, h, pks, sks, crs, values) = params
     fault_is = [i for i in range(t, t + t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
-    pcl = PolyCommitLog(degree_max=t)
-    pcl.preprocess_verifier(16)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -264,8 +263,10 @@ def test_hbacss2_actual_pcl_max_faulty_shares(benchmark_router, benchmark, batch
     values = [ZR.random()] * batch_multiple * (t + 1) * (t + 1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
+    pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     def _prog():
-        loop.run_until_complete(hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params))
+        loop.run_until_complete(hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params, pcl))
 
     benchmark(_prog)
