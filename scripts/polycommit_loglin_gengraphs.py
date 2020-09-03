@@ -21,7 +21,7 @@ color3 = "#01ff2d"
 tick_fontsize = 12
 
 # Loading
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0017_pcl_detailed.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0029_pcl_detailed.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 tvals_provebatch = []
@@ -61,7 +61,7 @@ hbacss2_dummy_pcl_max_faulty_shares = []
 hbacss2_dummy_pcl_one_faulty_share = []
 hbacss2_dummy_pcl_all_correct = []
 
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0018_hbavss_dummy_pcl.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0028_hbavss_dummy_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 for entry in logbenchmarks:
@@ -360,6 +360,7 @@ def draw_fixed_multiple_e2e(fixed_multuple, scenario_name, file_name,
                 bbox_inches='tight')
 
 
+'''
 # Loading the data for batch size specific to hbacss2
 with open("DataWinterfell/Linux-CPython-3.7-64bit/0022_hbavss2_only_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
@@ -377,7 +378,9 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbacss2_tvals_verifybatch.append(str(t))
         hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
+'''
 
+'''
 # Clear the data
 hbacss2_dummy_pcl_all_correct = []
 hbacss2_dummy_pcl_max_faulty_shares = []
@@ -403,19 +406,18 @@ hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
 print(hbacss2_provebatchtimes)
 print(hbacss2_verifybatchtimes)
 '''
+
+'''
 td_points_c0 = []
 td_points_c2 = []
-
 for i in hbacss0_dummy_pcl_all_correct:
     if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
         td_points_c0.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 for i in hbacss2_dummy_pcl_all_correct:
     if i['t'] in t_extracted:
         td_points_c2.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 # Sorting
 td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
@@ -429,7 +431,7 @@ td_n = []
 for i, elem in enumerate(td_points_c0):
     # Calculating hbacss0 + polycommithb
     t = elem[1]
-    n = 3 * t  + 1
+    n = 3 * t + 1
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c0.append(
         provebatchtimes[index] + verifybatchtimes[index] + td_points_c0[i][0])
@@ -439,17 +441,15 @@ for i, elem in enumerate(td_points_c0):
     td_per_party_per_proof_mean_c1.append(td_points_c0[i][0] + plotting_deal_arr[index] + amt_plotting_ver_arr[index])
 
     # Calculating hbacss2 + polycommithb
+    '''
     index = hbacss2_tvals_provebatch.index(str(t))
     temp_prove_time = hbacss2_provebatchtimes[index]
-    index = hbacss2_tvals_verifybatch.index(str(t))
     temp_verify_time = hbacss2_verifybatchtimes[index]
-    
-    #td_per_party_per_proof_mean_c2.append( ((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time) / t + td_points_c2[i][0])
-    #assume amortized time for 6*t*(t+1) is roughly the same as t*(t+1)
-    redundancy_overhead = n / (t+1)
+    '''
     index = amt_plotting_n_arr.index(str(3 * t + 1))
-    td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index])*redundancy_overhead + td_points_c2[i][0])
-    #td_per_party_per_proof_mean_c2.append(td_points_c2[i][0])
+    redundancy_overhead = n / (t + 1)
+    td_per_party_per_proof_mean_c2.append(
+        (provebatchtimes[index] + verifybatchtimes[index]) * redundancy_overhead + td_points_c2[i][0])
     td_n.append(3 * t + 1)
 
 draw_fixed_multiple_e2e(fixed_multuple, "all correct", "e2e_pcl_all_correct", td_n,
@@ -458,17 +458,14 @@ draw_fixed_multiple_e2e(fixed_multuple, "all correct", "e2e_pcl_all_correct", td
 '''
 td_points_c0 = []
 td_points_c2 = []
-
 for i in hbacss0_dummy_pcl_max_faulty_shares:
     if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
         td_points_c0.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 for i in hbacss2_dummy_pcl_max_faulty_shares:
     if i['t'] in t_extracted:
         td_points_c2.append(
             (i['per_party_per_proof_mean'], i['t']))
-
 # Sorting
 td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
@@ -481,29 +478,69 @@ td_n = []
 
 for i, elem in enumerate(td_points_c0):
     t = elem[1]
-    n = 3*t+1
+    n = 3 * t + 1
     # Calculating hbacss0 + polycommithb
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c0.append(
-        provebatchtimes[index] + verifybatchtimes[index] + (t+1) * (t/n) * verifybatchtimes[index] + td_points_c0[i][0])
+        provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[index] * ((2 * t + 1) / n) + (t + 1) * (
+                    t / n) * verifybatchtimes[index] + td_points_c0[i][0])
 
     # Calculating hbacss0 + amt
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c1.append(
-        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + (t+1) * (t/n) * amt_plotting_ver_arr[index] + td_points_c0[i][0])
+        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + amt_plotting_ver_arr[index] * ((2 * t + 1) / n) + (
+                    t + 1) * (t / n) * amt_plotting_ver_arr[index] + td_points_c0[i][0])
 
     # Calculating hbacss2 + polycommithb
+    '''
     index = hbacss2_tvals_provebatch.index(str(t))
     temp_prove_time = hbacss2_provebatchtimes[index]
-    index = hbacss2_tvals_verifybatch.index(str(t))
     temp_verify_time = hbacss2_verifybatchtimes[index]
-    redundancy_overhead = n / (t+1)
-    #td_per_party_per_proof_mean_c2.append(((3 * t + 1) * temp_prove_time + (3 * t + 1) * temp_verify_time + temp_verify_time + (t + 1) * temp_verify_time) / t + td_points_c2[i][0])
-    td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index] + ((t+2)/n)*verifybatchtimes[index])*redundancy_overhead + td_points_c2[i][0])
-    #td_per_party_per_proof_mean_c2.append(td_points_c2[i][0])
+    '''
+    index = amt_plotting_n_arr.index(str(3 * t + 1))
+    redundancy_overhead = n / (t + 1)
+    td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[
+        index] * (2 * t + 1) / n + ((t + 1) / n) * verifybatchtimes[index]) * redundancy_overhead + td_points_c2[i][0])
     td_n.append(3 * t + 1)
 
 draw_fixed_multiple_e2e(fixed_multuple, "max faulty shares", "e2e_pcl_max_faulty_shares", td_n,
                         td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
 
 # -----------------------
+
+# Checking the actual runtime to make sure our calculations are correct
+hbacss0_actual_pcl_max_faulty_shares = []
+hbacss0_actual_pcl_all_correct = []
+hbacss2_actual_pcl_max_faulty_shares = []
+hbacss2_actual_pcl_all_correct = []
+
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0030_hbavss_actual_pcl.json", "r") as file:
+    logdata = file.read().replace("\n", "")
+logbenchmarks = json.loads(logdata)["benchmarks"]
+for entry in logbenchmarks:
+    batch_multiple = entry["params"]["batch_multiple"]
+    t = entry["params"]["t"]
+    mean = entry["stats"]["mean"]
+
+    if entry["name"].startswith("test_hbacss0"):
+        per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1))
+    if entry["name"].startswith("test_hbacss2"):
+        per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1) * (t + 1))
+
+    per_party_per_proof_mean *= 1000.0
+    dict = {"batch_multiple": batch_multiple, "t": t, "mean": mean,
+            "per_party_per_proof_mean": per_party_per_proof_mean}
+
+    if entry["name"].startswith("test_hbacss0_actual_pcl_all_correct"):
+        hbacss0_actual_pcl_all_correct.append(dict)
+    if entry["name"].startswith("test_hbacss0_actual_pcl_max_faulty_shares"):
+        hbacss0_actual_pcl_max_faulty_shares.append(dict)
+    if entry["name"].startswith("test_hbacss2_actual_pcl_all_correct"):
+        hbacss2_actual_pcl_all_correct.append(dict)
+    if entry["name"].startswith("test_hbacss2_actual_pcl_max_faulty_shares"):
+        hbacss2_actual_pcl_max_faulty_shares.append(dict)
+
+print(hbacss0_actual_pcl_all_correct)
+print(hbacss0_actual_pcl_max_faulty_shares)
+print(hbacss2_actual_pcl_all_correct)
+print(hbacss2_actual_pcl_max_faulty_shares)

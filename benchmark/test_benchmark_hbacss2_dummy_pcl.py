@@ -88,7 +88,7 @@ def test_hbacss2_pcl_all_correct(benchmark_router, benchmark, t):
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
     g, h, pks, sks = get_avss_params_pyp(n, t)
-    values = [ZR.random()] * t * (t + 1)
+    values = [ZR.random()] * 6 * (t+1) * (t+1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
 
@@ -139,7 +139,7 @@ def test_hbacss2_pcl_max_faulty_shares(benchmark_router, benchmark, t):
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
     g, h, pks, sks = get_avss_params_pyp(n, t)
-    values = [ZR.random()] * t * (t+1)
+    values = [ZR.random()] * 6 * (t+1) * (t+1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
 
