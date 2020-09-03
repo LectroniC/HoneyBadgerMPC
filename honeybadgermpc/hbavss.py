@@ -187,6 +187,7 @@ class Hbacss0:
         self.tagvars[tag]['io'] = [send, recv, multicast]
         self.tagvars[tag]['avid'] = avid
         implicate_sent = False
+        self.tagvars[tag]['in_share_recovery'] = False
         # get phi and public key from reliable broadcast msg
         #commitments, ephemeral_public_key = loads(rbc_msg)
         # retrieve the z
@@ -200,13 +201,12 @@ class Hbacss0:
         else:
             multicast((HbAVSSMessageType.IMPLICATE, self.private_key))
             implicate_sent = True
+            self.tagvars[tag]['in_share_recovery'] = True
 
         ok_set = set()
         ready_set = set()
         implicate_set = set()
         output = False
-        #todo: tag-dependent variables like this should be in tagvars
-        self.tagvars[tag]['in_share_recovery'] = False
         ready_sent = False
 
         while True:
