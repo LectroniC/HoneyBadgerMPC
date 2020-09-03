@@ -21,7 +21,7 @@ color3 = "#01ff2d"
 tick_fontsize = 12
 
 # Loading
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0017_pcl_detailed.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0029_pcl_detailed.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 tvals_provebatch = []
@@ -61,7 +61,7 @@ hbacss2_dummy_pcl_max_faulty_shares = []
 hbacss2_dummy_pcl_one_faulty_share = []
 hbacss2_dummy_pcl_all_correct = []
 
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0018_hbavss_dummy_pcl.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0028_hbavss_dummy_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 for entry in logbenchmarks:
@@ -482,14 +482,14 @@ for i, elem in enumerate(td_points_c0):
     # Calculating hbacss0 + polycommithb
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c0.append(
-        provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[index] + (t + 1) * (t / n) *
-        verifybatchtimes[index] + td_points_c0[i][0])
+        provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[index] * ((2 * t + 1) / n) + (t + 1) * (
+                    t / n) * verifybatchtimes[index] + td_points_c0[i][0])
 
     # Calculating hbacss0 + amt
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c1.append(
-        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + amt_plotting_ver_arr[index] + (t + 1) * (t / n) *
-        amt_plotting_ver_arr[index] + td_points_c0[i][0])
+        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + amt_plotting_ver_arr[index] * ((2 * t + 1) / n) + (
+                    t + 1) * (t / n) * amt_plotting_ver_arr[index] + td_points_c0[i][0])
 
     # Calculating hbacss2 + polycommithb
     '''
@@ -514,7 +514,7 @@ hbacss0_actual_pcl_all_correct = []
 hbacss2_actual_pcl_max_faulty_shares = []
 hbacss2_actual_pcl_all_correct = []
 
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0026_actual_pcl_run_data_6_5.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0030_hbavss_actual_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 for entry in logbenchmarks:
