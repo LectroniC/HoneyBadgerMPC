@@ -16,13 +16,12 @@ import logging
 import time
 import cProfile
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
+
 # Uncomment this when you want logs from this file.
 # logger.setLevel(logging.NOTSET)
-
 
 def get_avss_params(n, t):
     g, h = G1.rand(), G1.rand()
@@ -42,13 +41,9 @@ def get_avss_params_pyp(n, t):
         public_keys[i] = pow(g, private_keys[i])
     return g, h, public_keys, private_keys
 
+
 mul_t_param_list_for_actual_pcl = [
-    (5, 1),
-    (5, 2),
-    (5, 5),
-    (5, 10),
-    (5, 22),
-    (5, 42)
+    (6, 5),
 ]
 
 
@@ -75,13 +70,14 @@ class Hbacss2_always_send_and_accept_implicates(Hbacss2_always_accept_implicates
         super()._handle_dealer_msgs(tag, dispersal_msg, rbc_msg)
         return False
 
+
 async def hbacss0_actual_pcl_all_correct(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
     pcl = PolyCommitLog(degree_max=t)
-
+    pcl.preprocess_verifier(16)
     with ExitStack() as stack:
         hbavss_list = [None] * n
         for i in range(n):
@@ -101,6 +97,7 @@ async def hbacss0_actual_pcl_all_correct(benchmark_router, params):
         for task in avss_tasks:
             task.cancel()
 
+
 @mark.parametrize(
     "batch_multiple, t",
     mul_t_param_list_for_actual_pcl,
@@ -119,13 +116,15 @@ def test_hbacss0_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
 
     benchmark(_prog)
 
+
 async def hbacss0_actual_pcl_max_faulty_shares(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
-    fault_is = [i for i in range(t, t+t)]
+    fault_is = [i for i in range(t, t + t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
     pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -180,6 +179,7 @@ async def hbacss2_actual_pcl_all_correct(benchmark_router, params):
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
     pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -209,7 +209,7 @@ def test_hbacss2_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
     g, h, pks, sks = get_avss_params_pyp(n, t)
-    values = [ZR.random()] * batch_multiple * (t + 1)
+    values = [ZR.random()] * batch_multiple * (t + 1) * (t + 1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
 
@@ -218,13 +218,15 @@ def test_hbacss2_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
 
     benchmark(_prog)
 
+
 async def hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params):
     (t, n, g, h, pks, sks, crs, values) = params
-    fault_is = [i for i in range(t, t+t)]
+    fault_is = [i for i in range(t, t + t)]
     sends, recvs, _ = benchmark_router(n)
     avss_tasks = [None] * n
     dealer_id = randint(0, n - 1)
     pcl = PolyCommitLog(degree_max=t)
+    pcl.preprocess_verifier(16)
 
     with ExitStack() as stack:
         hbavss_list = [None] * n
@@ -249,6 +251,7 @@ async def hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params):
         for task in avss_tasks:
             task.cancel()
 
+
 @mark.parametrize(
     "batch_multiple, t",
     mul_t_param_list_for_actual_pcl,
@@ -258,7 +261,7 @@ def test_hbacss2_actual_pcl_max_faulty_shares(benchmark_router, benchmark, batch
     loop = asyncio.get_event_loop()
     n = 3 * t + 1
     g, h, pks, sks = get_avss_params_pyp(n, t)
-    values = [ZR.random()] * batch_multiple * (t + 1)
+    values = [ZR.random()] * batch_multiple * (t + 1) * (t + 1)
     crs = [g]
     params = (t, n, g, h, pks, sks, crs, values)
 
