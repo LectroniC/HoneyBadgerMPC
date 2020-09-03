@@ -482,14 +482,14 @@ for i, elem in enumerate(td_points_c0):
     # Calculating hbacss0 + polycommithb
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c0.append(
-        provebatchtimes[index] + verifybatchtimes[index] + (t + 1) * (t / n) * verifybatchtimes[index] +
-        td_points_c0[i][0])
+        provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[index] + (t + 1) * (t / n) *
+        verifybatchtimes[index] + td_points_c0[i][0])
 
     # Calculating hbacss0 + amt
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     td_per_party_per_proof_mean_c1.append(
-        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + (t + 1) * (t / n) * amt_plotting_ver_arr[index] +
-        td_points_c0[i][0])
+        plotting_deal_arr[index] + amt_plotting_ver_arr[index] + amt_plotting_ver_arr[index] + (t + 1) * (t / n) *
+        amt_plotting_ver_arr[index] + td_points_c0[i][0])
 
     # Calculating hbacss2 + polycommithb
     '''
@@ -500,7 +500,7 @@ for i, elem in enumerate(td_points_c0):
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     redundancy_overhead = n / (t + 1)
     td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[
-        index] + ((t + 1) / n) * verifybatchtimes[index]) * redundancy_overhead + td_points_c2[i][0])
+        index] * (2 * t + 1) / n + ((t + 1) / n) * verifybatchtimes[index]) * redundancy_overhead + td_points_c2[i][0])
     td_n.append(3 * t + 1)
 
 draw_fixed_multiple_e2e(fixed_multuple, "max faulty shares", "e2e_pcl_max_faulty_shares", td_n,
