@@ -214,7 +214,7 @@ class Hbacss0:
             sender, avss_msg = await recv()
 
             # IMPLICATE
-            if avss_msg[0] == HbAVSSMessageType.IMPLICATE:
+            if avss_msg[0] == HbAVSSMessageType.IMPLICATE and not self.tagvars[tag]['in_share_recovery']:
                 if sender not in implicate_set:
                     implicate_set.add(sender)
                     # validate the implicate
