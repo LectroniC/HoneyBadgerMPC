@@ -111,6 +111,7 @@ def test_hbacss0_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
     params = (t, n, g, h, pks, sks, crs, values)
     pcl = PolyCommitLog(degree_max=t)
     pcl.preprocess_verifier(16)
+    pcl.preprocess_prover(16)
 
     def _prog():
         loop.run_until_complete(hbacss0_actual_pcl_all_correct(benchmark_router, params, pcl))
@@ -167,6 +168,7 @@ def test_hbacss0_actual_pcl_max_faulty_shares(benchmark_router, benchmark, batch
     params = (t, n, g, h, pks, sks, crs, values)
     pcl = PolyCommitLog(degree_max=t)
     pcl.preprocess_verifier(16)
+    pcl.preprocess_prover(16)
 
     def _prog():
         loop.run_until_complete(hbacss0_actual_pcl_max_faulty_shares(benchmark_router, params, pcl))
@@ -213,6 +215,7 @@ def test_hbacss2_actual_pcl_all_correct(benchmark_router, benchmark, batch_multi
     params = (t, n, g, h, pks, sks, crs, values)
     pcl = PolyCommitLog(degree_max=t)
     pcl.preprocess_verifier(16)
+    pcl.preprocess_prover(16)
 
     def _prog():
         loop.run_until_complete(hbacss2_actual_pcl_all_correct(benchmark_router, params, pcl))
@@ -265,6 +268,7 @@ def test_hbacss2_actual_pcl_max_faulty_shares(benchmark_router, benchmark, batch
     params = (t, n, g, h, pks, sks, crs, values)
     pcl = PolyCommitLog(degree_max=t)
     pcl.preprocess_verifier(16)
+    pcl.preprocess_prover(16)
 
     def _prog():
         loop.run_until_complete(hbacss2_actual_pcl_max_faulty_shares(benchmark_router, params, pcl))
