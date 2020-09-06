@@ -378,20 +378,25 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbacss2_tvals_verifybatch.append(str(t))
         hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
+
+hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
+hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
+print(hbacss2_provebatchtimes)
+print(hbacss2_verifybatchtimes)
 '''
 
-'''
+
 # Clear the data
 hbacss2_dummy_pcl_all_correct = []
 hbacss2_dummy_pcl_max_faulty_shares = []
 # Loading the data for hbacss2 with batch size t*(t+1)
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0023_hbavss2_dummy_pcl.json", "r") as file:
+with open("DataWinterfell/Linux-CPython-3.7-64bit/0031_hbacss2_dummy_pcl.json", "r") as file:
     logdata = file.read().replace("\n", "")
 logbenchmarks = json.loads(logdata)["benchmarks"]
 for entry in logbenchmarks:
     t = entry["params"]["t"]
     mean = entry["stats"]["mean"]
-    per_party_per_proof_mean = mean / ((3 * t + 1) * t * (t + 1))
+    per_party_per_proof_mean = mean / ((3 * t + 1) * 6 * (t+1) * (t + 1))
     per_party_per_proof_mean *= 1000.0
     orig_batched_stddev = entry["stats"]["stddev"]
     dict = {"t": t, "mean": mean,
@@ -401,13 +406,7 @@ for entry in logbenchmarks:
     if entry["name"].startswith("test_hbacss2_pcl_max_faulty_shares"):
         hbacss2_dummy_pcl_max_faulty_shares.append(dict)
 
-hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
-hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
-print(hbacss2_provebatchtimes)
-print(hbacss2_verifybatchtimes)
-'''
 
-'''
 td_points_c0 = []
 td_points_c2 = []
 for i in hbacss0_dummy_pcl_all_correct:
@@ -421,7 +420,7 @@ for i in hbacss2_dummy_pcl_all_correct:
 # Sorting
 td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
-'''
+
 
 td_per_party_per_proof_mean_c0 = []
 td_per_party_per_proof_mean_c1 = []
@@ -455,7 +454,6 @@ for i, elem in enumerate(td_points_c0):
 draw_fixed_multiple_e2e(fixed_multuple, "no errors", "e2e_pcl_all_correct", td_n,
                         td_per_party_per_proof_mean_c0, td_per_party_per_proof_mean_c1, td_per_party_per_proof_mean_c2)
 
-'''
 td_points_c0 = []
 td_points_c2 = []
 for i in hbacss0_dummy_pcl_max_faulty_shares:
@@ -469,7 +467,6 @@ for i in hbacss2_dummy_pcl_max_faulty_shares:
 # Sorting
 td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 td_points_c2 = sorted(td_points_c2, key=lambda x: x[1])
-'''
 
 td_per_party_per_proof_mean_c0 = []
 td_per_party_per_proof_mean_c1 = []
@@ -509,36 +506,36 @@ draw_fixed_multiple_e2e(fixed_multuple, "max faulty shares", "e2e_pcl_max_faulty
 # -----------------------
 
 # Checking the actual runtime to make sure our calculations are correct
-hbacss0_actual_pcl_max_faulty_shares = []
-hbacss0_actual_pcl_all_correct = []
-hbacss2_actual_pcl_max_faulty_shares = []
-hbacss2_actual_pcl_all_correct = []
+# hbacss0_actual_pcl_max_faulty_shares = []
+# hbacss0_actual_pcl_all_correct = []
+# hbacss2_actual_pcl_max_faulty_shares = []
+# hbacss2_actual_pcl_all_correct = []
 
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0030_hbavss_actual_pcl.json", "r") as file:
-    logdata = file.read().replace("\n", "")
-logbenchmarks = json.loads(logdata)["benchmarks"]
-for entry in logbenchmarks:
-    batch_multiple = entry["params"]["batch_multiple"]
-    t = entry["params"]["t"]
-    mean = entry["stats"]["mean"]
+# with open("DataWinterfell/Linux-CPython-3.7-64bit/0030_hbavss_actual_pcl.json", "r") as file:
+#     logdata = file.read().replace("\n", "")
+# logbenchmarks = json.loads(logdata)["benchmarks"]
+# for entry in logbenchmarks:
+#     batch_multiple = entry["params"]["batch_multiple"]
+#     t = entry["params"]["t"]
+#     mean = entry["stats"]["mean"]
 
-    if entry["name"].startswith("test_hbacss0"):
-        per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1))
-    if entry["name"].startswith("test_hbacss2"):
-        per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1) * (t + 1))
+#     if entry["name"].startswith("test_hbacss0"):
+#         per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1))
+#     if entry["name"].startswith("test_hbacss2"):
+#         per_party_per_proof_mean = mean / ((3 * t + 1) * batch_multiple * (t + 1) * (t + 1))
 
-    per_party_per_proof_mean *= 1000.0
-    dict = {"batch_multiple": batch_multiple, "t": t, "mean": mean,
-            "per_party_per_proof_mean": per_party_per_proof_mean}
+#     per_party_per_proof_mean *= 1000.0
+#     dict = {"batch_multiple": batch_multiple, "t": t, "mean": mean,
+#             "per_party_per_proof_mean": per_party_per_proof_mean}
 
-    if entry["name"].startswith("test_hbacss0_actual_pcl_all_correct"):
-        hbacss0_actual_pcl_all_correct.append(dict)
-    if entry["name"].startswith("test_hbacss0_actual_pcl_max_faulty_shares"):
-        hbacss0_actual_pcl_max_faulty_shares.append(dict)
-    if entry["name"].startswith("test_hbacss2_actual_pcl_all_correct"):
-        hbacss2_actual_pcl_all_correct.append(dict)
-    if entry["name"].startswith("test_hbacss2_actual_pcl_max_faulty_shares"):
-        hbacss2_actual_pcl_max_faulty_shares.append(dict)
+#     if entry["name"].startswith("test_hbacss0_actual_pcl_all_correct"):
+#         hbacss0_actual_pcl_all_correct.append(dict)
+#     if entry["name"].startswith("test_hbacss0_actual_pcl_max_faulty_shares"):
+#         hbacss0_actual_pcl_max_faulty_shares.append(dict)
+#     if entry["name"].startswith("test_hbacss2_actual_pcl_all_correct"):
+#         hbacss2_actual_pcl_all_correct.append(dict)
+#     if entry["name"].startswith("test_hbacss2_actual_pcl_max_faulty_shares"):
+#         hbacss2_actual_pcl_max_faulty_shares.append(dict)
 
 
 
@@ -572,6 +569,14 @@ def draw_yield(file_name,
                 bbox_inches='tight')
 
 
+
+td_points_c0 = []
+for i in hbacss0_dummy_pcl_all_correct:
+    if i['batch_multiple'] == fixed_multuple and i['t'] in t_extracted:
+        td_points_c0.append(
+            (i['per_party_per_proof_mean'], i['t']))
+# Sorting
+td_points_c0 = sorted(td_points_c0, key=lambda x: x[1])
 
 
 yield2tp1 = []
