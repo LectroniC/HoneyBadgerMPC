@@ -378,7 +378,6 @@ for entry in logbenchmarks:
         t = entry["params"]["t"]
         hbacss2_tvals_verifybatch.append(str(t))
         hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
-
 hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
 hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
 print(hbacss2_provebatchtimes)
@@ -595,7 +594,7 @@ for i, elem in enumerate(td_points_c0):
     yield2_5tp1.append(hbacss0_time * (2.5*t+1)/(1.5*t+1))
     yield3tp1.append(hbacss0_time * (3*t+1)/(2*t+1))
     td_n.append(3 * t + 1)
-    if n == 127:
+    if n == 31:
         print(1000 / (hbacss0_time * (3*t+1)/(2*t+1)))
 
 draw_yield("input_mask_yield", td_n, yield2tp1, yield2_5tp1, yield3tp1)
