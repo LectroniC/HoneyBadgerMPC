@@ -360,30 +360,28 @@ def draw_fixed_multiple_e2e(fixed_multuple, scenario_name, file_name,
                 bbox_inches='tight')
 
 
-'''
-# Loading the data for batch size specific to hbacss2
-with open("DataWinterfell/Linux-CPython-3.7-64bit/0022_hbavss2_only_pcl.json", "r") as file:
-    logdata = file.read().replace("\n", "")
-logbenchmarks = json.loads(logdata)["benchmarks"]
-hbacss2_tvals_provebatch = []
-hbacss2_provebatchtimes = []
-hbacss2_tvals_verifybatch = []
-hbacss2_verifybatchtimes = []
-for entry in logbenchmarks:
-    if entry["name"].startswith("test_hbacss2_size_benchmark_batch_creation"):
-        t = entry["params"]["t"]
-        hbacss2_tvals_provebatch.append(str(t))
-        hbacss2_provebatchtimes.append(entry["stats"]["mean"] / (3 * t + 1) / t)
-    if entry["name"].startswith("test_hbacss2_size_benchmark_batch_verify"):
-        t = entry["params"]["t"]
-        hbacss2_tvals_verifybatch.append(str(t))
-        hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
-hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
-hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
-print(hbacss2_provebatchtimes)
-print(hbacss2_verifybatchtimes)
-'''
 
+# # Loading the data for batch size specific to hbacss2
+# with open("DataWinterfell/Linux-CPython-3.7-64bit/0022_hbavss2_only_pcl.json", "r") as file:
+#     logdata = file.read().replace("\n", "")
+# logbenchmarks = json.loads(logdata)["benchmarks"]
+# hbacss2_tvals_provebatch = []
+# hbacss2_provebatchtimes = []
+# hbacss2_tvals_verifybatch = []
+# hbacss2_verifybatchtimes = []
+# for entry in logbenchmarks:
+#     if entry["name"].startswith("test_hbacss2_size_benchmark_batch_creation"):
+#         t = entry["params"]["t"]
+#         hbacss2_tvals_provebatch.append(str(t))
+#         hbacss2_provebatchtimes.append(entry["stats"]["mean"] / (3 * t + 1) / t)
+#     if entry["name"].startswith("test_hbacss2_size_benchmark_batch_verify"):
+#         t = entry["params"]["t"]
+#         hbacss2_tvals_verifybatch.append(str(t))
+#         hbacss2_verifybatchtimes.append(entry["stats"]["mean"] / t)
+# hbacss2_provebatchtimes = [i * 1000.0 for i in hbacss2_provebatchtimes]
+# hbacss2_verifybatchtimes = [i * 1000.0 for i in hbacss2_verifybatchtimes]
+# print(hbacss2_provebatchtimes)
+# print(hbacss2_verifybatchtimes)
 
 # Clear the data
 hbacss2_dummy_pcl_all_correct = []
@@ -439,11 +437,6 @@ for i, elem in enumerate(td_points_c0):
     td_per_party_per_proof_mean_c1.append(td_points_c0[i][0] + plotting_deal_arr[index] + amt_plotting_ver_arr[index])
 
     # Calculating hbacss2 + polycommithb
-    '''
-    index = hbacss2_tvals_provebatch.index(str(t))
-    temp_prove_time = hbacss2_provebatchtimes[index]
-    temp_verify_time = hbacss2_verifybatchtimes[index]
-    '''
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     redundancy_overhead = n / (t + 1)
     td_per_party_per_proof_mean_c2.append(
@@ -488,11 +481,6 @@ for i, elem in enumerate(td_points_c0):
                     t + 1) * (t / n) * amt_plotting_ver_arr[index] + td_points_c0[i][0])
 
     # Calculating hbacss2 + polycommithb
-    '''
-    index = hbacss2_tvals_provebatch.index(str(t))
-    temp_prove_time = hbacss2_provebatchtimes[index]
-    temp_verify_time = hbacss2_verifybatchtimes[index]
-    '''
     index = amt_plotting_n_arr.index(str(3 * t + 1))
     redundancy_overhead = n / (t + 1)
     td_per_party_per_proof_mean_c2.append((provebatchtimes[index] + verifybatchtimes[index] + verifybatchtimes[
